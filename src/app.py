@@ -28,6 +28,11 @@ def get_wines_from_db():
     with DatabaseConnection() as conn:
         return pd.read_sql("SELECT id, type, alcohol, ph, residual_sugar, quality FROM wines LIMIT 200", conn)
 
+
+@st.cache_resource
+def get_recommender():
+    return WineRecommender()
+
 st.title("🍷 WineScout Platform")
 st.markdown("*Trasformare l'istinto del sommelier in algoritmi predittivi grazie al Machine Learning*")
 st.markdown("---")
@@ -123,8 +128,7 @@ elif page == "🎯 Raccomandazioni":
     st.header("Motore di Raccomandazione Content-Based")
     st.markdown("Trova vini chimicamente simili utilizzando la **Similarità Coseno**.")
     
-    with st.spinner("Caricamento motore di raccomandazione..."):
-        recommender = WineRecommender()
+    recommender = get_recommender()
     
     # Prendi una lista di ID per il dropdown
     wine_ids = recommender.df["id"].tolist()
