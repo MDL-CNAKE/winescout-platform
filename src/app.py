@@ -1,121 +1,191 @@
-"""WineScout - Trasformare l'istinto del sommelier in algoritmi predittivi."""
+"""
+WineScout Platform - Applicazione Streamlit
+Trasformare l'istinto del sommelier in algoritmi predittivi grazie al Machine Learning
+"""
+import sys
 import os
 import joblib
 import pandas as pd
 import requests
 import streamlit as st
-import mysql.connector
-from dotenv import load_dotenv
-from models.recommender import WineRecommender, FEATURES
 
-load_dotenv()
-DB = dict(host=os.getenv("DB_HOST", "127.0.0.1"), port=3306, user="winescout",
-          password="winescout", database="winescout")
-MODEL_PATH = "models/quality_model.pkl"
+# Aggiungi la root del progetto al path per importare i moduli
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-st.set_page_config(page_title="WineScout", page_icon="🍷", layout="wide")
+from src.database.connection import DatabaseConnection
+from src.models.recommender import WineRecommender
 
+# Configurazione pagina
+st.set_page_config(page_title="WineScout Platform", page_icon="🍷", layout="wide")
 
-@st.cache_data
-def load_wines() -> pd.DataFrame:
-    conn = mysql.connector.connect(**DB)
-    cur = conn.cursor()
-    cur.execute("SELECT id, type, " + ", ".join(FEATURES) + ", quality FROM wines")
-    df = pd.DataFrame(cur.fetchall(), columns=[c[0] for c in cur.description])
-    conn.close()
-    df[FEATURES] = df[FEATURES].astype(float)
-    return df
-
-
+# Cache per evitare di ricaricare modello e DB a ogni interazione
 @st.cache_resource
 def load_model():
-    return joblib.load(MODEL_PATH)
+    return joblib.load("models/quality_model.pkl")
 
+@st.cache_data
+def get_wines_from_db():
+    with DatabaseConnection() as conn:
+        return pd.read_sql("SELECT id, type, alcohol, ph, residual_sugar, quality FROM wines LIMIT 200", conn)
 
-@st.cache_resource
-def load_recommender() -> WineRecommender:
-    return WineRecommender()
+st.title("🍷 WineScout Platform")
+st.markdown("*Trasformare l'istinto del sommelier in algoritmi predittivi grazie al Machine Learning*")
+st.markdown("---")
 
+# Sidebar per la navigazione
+st.sidebar.header("Navigazione")
+page = st.sidebar.radio("Scegli una sezione:", [
+    "🍷 Catalogo Vini", 
+    "🔮 Predizione Qualità", 
+    "🎯 Raccomandazioni", 
+    "🤖 Sommelier Virtuale"
+])
 
-def sommelier_note(wine: pd.Series) -> str:
-    key = os.getenv("OPENROUTER_API_KEY")
-    if not key:
-        return ("⚠️ Nessuna chiave API configurata. Crea un file .env con "
-                "OPENROUTER_API_KEY=... per attivare il Sommelier Virtuale.")
-    system = (
-        "Sei un sommelier professionista AIS. Scrivi una nota di degustazione "
-        "plausibile in italiano, strutturata in: esame visivo, olfattivo, "
-        "gustativo, persistenza e un abbinamento cibo-vino. Basati SOLO sui "
-        "parametri chimici forniti. Massimo 150 parole. Concludi ricordando "
-        "che la nota e' generata da AI a partire da dati chimici."
-    )
-    user = (f"Vino {wine['type']}: alcol {wine['alcohol']}%, pH {wine['ph']}, "
-            f"acidita' volatile {wine['volatile_acidity']} g/L, zucchero residuo "
-            f"{wine['residual_sugar']} g/L, solfati {wine['sulphates']} g/L, "
-            f"qualita' valutata {wine['quality']}/10.")
-    r = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={"Authorization": f"Bearer {key}"},
-        json={"model": os.getenv("LLM_MODEL", "meta-llama/llama-3.1-8b-instruct"),
-              "messages": [{"role": "system", "content": system},
-                           {"role": "user", "content": user}]},
-        timeout=60)
-    r.raise_for_status()
-    return r.json()["choices"][0]["message"]["content"]
+# ==========================================
+# PAGINA 1: CATALOGO VINI
+# ==========================================
+if page == "🍷 Catalogo Vini":
+    st.header("Catalogo Vini (Anteprima)")
+    st.info("Dati caricati direttamente dal database MySQL persistente.")
+    
+    df = get_wines_from_db()
+    
+    # Filtri
+    col1, col2 = st.columns(2)
+    with col1:
+        type_filter = st.selectbox("Filtra per Tipo", ["Tutti", "red", "white"])
+    with col2:
+        quality_filter = st.slider("Filtra per Qualità Minima", int(df['quality'].min()), int(df['quality'].max()), int(df['quality'].min()))
+    
+    # Applica filtri
+    filtered_df = df.copy()
+    if type_filter != "Tutti":
+        filtered_df = filtered_df[filtered_df['type'] == type_filter]
+    filtered_df = filtered_df[filtered_df['quality'] >= quality_filter]
+    
+    st.dataframe(filtered_df, use_container_width=True, hide_index=True)
 
+# ==========================================
+# PAGINA 2: PREDIZIONE QUALITÀ
+# ==========================================
+elif page == "🔮 Predizione Qualità":
+    st.header("Predizione Punteggio Qualità")
+    st.markdown("Inserisci le caratteristiche chimiche del vino per ottenere una stima del punteggio (0-10).")
+    
+    model = load_model()
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        w_type = st.selectbox("Tipo", ["red", "white"])
+        fixed_acidity = st.slider("Acidità Fissa", 4.0, 16.0, 7.0)
+        volatile_acidity = st.slider("Acidità Volatile", 0.1, 1.6, 0.5)
+        citric_acid = st.slider("Acido Citrico", 0.0, 1.0, 0.3)
+        residual_sugar = st.slider("Zucchero Residuo", 0.5, 65.0, 2.0)
+        chlorides = st.slider("Cloruri", 0.01, 0.6, 0.08)
+    with col2:
+        free_sulfur_dioxide = st.slider("SO2 Libera", 1.0, 289.0, 15.0)
+        total_sulfur_dioxide = st.slider("SO2 Totale", 6.0, 440.0, 100.0)
+        density = st.slider("Densità", 0.98, 1.04, 0.997)
+        ph = st.slider("pH", 2.7, 4.0, 3.3)
+        sulphates = st.slider("Solfati", 0.3, 2.0, 0.6)
+        alcohol = st.slider("Alcol (%)", 8.0, 15.0, 10.0)
+    
+    if st.button("🔮 Predici Qualità", type="primary"):
+        # Crea il DataFrame per la predizione (stesso ordine delle feature usate nel training)
+        input_data = pd.DataFrame([{
+            "type": w_type,
+            "fixed_acidity": fixed_acidity,
+            "volatile_acidity": volatile_acidity,
+            "citric_acid": citric_acid,
+            "residual_sugar": residual_sugar,
+            "chlorides": chlorides,
+            "free_sulfur_dioxide": free_sulfur_dioxide,
+            "total_sulfur_dioxide": total_sulfur_dioxide,
+            "density": density,
+            "ph": ph,
+            "sulphates": sulphates,
+            "alcohol": alcohol
+        }])
+        
+        # Il modello si aspetta le colonne nello stesso ordine del training
+        feature_order = ["type", "fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar",
+                         "chlorides", "free_sulfur_dioxide", "total_sulfur_dioxide", "density", "ph", "sulphates", "alcohol"]
+        
+        prediction = model.predict(input_data[feature_order])[0]
+        
+        st.success(f"### Punteggio Qualità Stimato: {prediction:.1f} / 10")
+        st.caption("Nota: Questo è un modello predittivo basato su dati storici. Il punteggio reale può variare.")
 
-st.title("🍷 WineScout")
-st.caption("Trasformare l'istinto del sommelier in algoritmi predittivi")
-page = st.sidebar.radio("Sezione", ["Catalogo", "Predici qualita'",
-                                    "Raccomandazioni", "Sommelier virtuale"])
-st.sidebar.info("Questa app usa Machine Learning e AI generativa. Le predizioni "
-                "sono un supporto decisionale, non sostituiscono il giudizio "
-                "di un esperto. Dataset: vini portoghesi UCI (solo rossi/bianchi).")
+# ==========================================
+# PAGINA 3: RACCOMANDAZIONI
+# ==========================================
+elif page == "🎯 Raccomandazioni":
+    st.header("Motore di Raccomandazione Content-Based")
+    st.markdown("Trova vini chimicamente simili utilizzando la **Similarità Coseno**.")
+    
+    with st.spinner("Caricamento motore di raccomandazione..."):
+        recommender = WineRecommender()
+    
+    # Prendi una lista di ID per il dropdown
+    wine_ids = recommender.df["id"].tolist()
+    selected_id = st.selectbox("Seleziona un vino di partenza (ID):", wine_ids)
+    
+    if st.button("🎯 Trova Vini Simili", type="primary"):
+        try:
+            recommendations = recommender.recommend(wine_id=selected_id, top_n=5, same_type=True)
+            
+            st.subheader(f"Top 5 vini simili al vino ID {selected_id}")
+            
+            # Formatta la tabella per la visualizzazione
+            display_df = recommendations[["id", "type", "alcohol", "ph", "quality", "similarity"]].copy()
+            display_df["similarity"] = display_df["similarity"].apply(lambda x: f"{x:.2%}")
+            display_df = display_df.rename(columns={
+                "id": "ID Vino", "type": "Tipo", "alcohol": "Alcol (%)", 
+                "ph": "pH", "quality": "Qualità", "similarity": "Similarità"
+            })
+            
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
+        except ValueError as e:
+            st.error(str(e))
 
-try:
-    wines = load_wines()
-except Exception as e:
-    st.error(f"Database non raggiungibile: {e}. Avvia con: docker compose up -d mysql")
-    st.stop()
-
-if page == "Catalogo":
-    c1, c2 = st.columns(2)
-    tipo = c1.multiselect("Tipo", ["red", "white"], default=["red", "white"])
-    qmin, qmax = c2.slider("Qualita'", 3, 9, (3, 9))
-    view = wines[wines["type"].isin(tipo) & wines["quality"].between(qmin, qmax)]
-    st.metric("Vini trovati", len(view))
-    st.dataframe(view, use_container_width=True, height=450)
-
-elif page == "Predici qualita'":
-    st.subheader("Stima la qualita' di un vino dalle sue analisi chimiche")
-    tipo = st.selectbox("Tipo", ["red", "white"])
-    cols = st.columns(4)
-    values = {}
-    for i, feat in enumerate(FEATURES):
-        default = float(wines[wines["type"] == tipo][feat].median())
-        values[feat] = cols[i % 4].number_input(feat.replace("_", " "), value=default)
-    if st.button("Predici", type="primary"):
-        X = pd.DataFrame([{"type": tipo, **values}])
-        pred = load_model().predict(X)[0]
-        st.success(f"Qualita' stimata: **{pred:.2f} / 10**")
-        st.caption("Modello: Random Forest (RMSE 0.57 su test set). "
-                   "La predizione e' indicativa.")
-
-elif page == "Raccomandazioni":
-    st.subheader("Trova i 'cugini chimici' di un vino")
-    wine_id = st.selectbox("Vino di partenza (id)", wines["id"])
-    top_n = st.slider("Quante raccomandazioni", 3, 10, 5)
-    base = wines[wines["id"] == wine_id].iloc[0]
-    st.write(f"Partenza: **{base['type']}**, alcol {base['alcohol']}%, "
-             f"qualita' {base['quality']}/10")
-    st.dataframe(load_recommender().recommend(int(wine_id), top_n),
-                 use_container_width=True)
-
-else:
-    st.subheader("🤖 Sommelier Virtuale (AI generativa)")
-    st.warning("Le note sono generate da un'intelligenza artificiale a partire "
-               "dai soli dati chimici: non derivano da una degustazione reale.")
-    wine_id = st.selectbox("Scegli un vino", wines["id"])
-    if st.button("Genera nota di degustazione", type="primary"):
-        with st.spinner("Il sommelier sta degustando..."):
-            st.markdown(sommelier_note(wines[wines["id"] == wine_id].iloc[0]))
+# ==========================================
+# PAGINA 4: SOMMELIER VIRTUALE (LLM)
+# ==========================================
+elif page == "🤖 Sommelier Virtuale":
+    st.header("Sommelier Virtuale AI")
+    st.markdown("Chiedi consigli su abbinamenti, note di degustazione o curiosità sul vino.")
+    
+    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    model_name = os.getenv("LLM_MODEL", "meta-llama/llama-3.1-8b-instruct")
+    
+    prompt = st.text_area("La tua domanda per il Sommelier:", 
+                          placeholder="Es: 'Qual è l'abbinamento ideale per un Pinot Nero con 13% di alcol e note di frutta rossa?'",
+                          height=100)
+    
+    if st.button("🤖 Chiedi al Sommelier", type="primary"):
+        if not api_key or api_key == "metti_qui_la_tua_chiave":
+            st.warning("⚠️ **Modalità Demo:** API Key non configurata. Ecco una risposta simulata per mostrarti il funzionamento dell'interfaccia.")
+            st.info(f"**Sommelier AI:** Basandomi sulle migliori pratiche, un vino con queste caratteristiche si abbina splendidamente a carni rosse arrosto o funghi porcini. La sua struttura richiede un piatto con buona persistenza gustativa. *(Questa è una risposta di fallback. Configura OPENROUTER_API_KEY nel file .env per risposte reali).*")
+        else:
+            with st.spinner("Il sommelier sta preparando la risposta..."):
+                try:
+                    response = requests.post(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {api_key}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "model": model_name,
+                            "messages": [
+                                {"role": "system", "content": "Sei un sommelier esperto e professionale. Rispondi in italiano in modo elegante, citando esame visivo, olfattivo e gustativo quando pertinente."},
+                                {"role": "user", "content": prompt}
+                            ]
+                        }
+                    )
+                    response.raise_for_status()
+                    result = response.json()
+                    answer = result["choices"][0]["message"]["content"]
+                    st.markdown(f"**Risposta del Sommelier:**\n\n{answer}")
+                except Exception as e:
+                    st.error(f"Errore nella chiamata API: {e}")

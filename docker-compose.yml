@@ -25,5 +25,23 @@ services:
       mysql:
         condition: service_healthy
 
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: winescout
+      DB_PASSWORD: winescout
+      DB_NAME: winescout
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-meta-llama/llama-3.1-8b-instruct}
+    depends_on:
+      flyway:
+        condition: service_completed_successfully
+    volumes:
+      - ./models:/app/models
+
 volumes:
   mysql_data:
