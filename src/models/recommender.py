@@ -1,11 +1,14 @@
 """Motore di raccomandazione content-based con similarita coseno."""
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 import pandas as pd
-import mysql.connector
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import StandardScaler
 
-DB = dict(host="127.0.0.1", port=3306, user="winescout",
-          password="winescout", database="winescout")
+from src.database.connection import DatabaseConnection
+
 FEATURES = ["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar",
             "chlorides", "free_sulfur_dioxide", "total_sulfur_dioxide",
             "density", "ph", "sulphates", "alcohol"]
@@ -21,14 +24,11 @@ class WineRecommender:
 
     @staticmethod
     def _load() -> pd.DataFrame:
-        try:
-            conn = mysql.connector.connect(**DB)
-        except mysql.connector.Error as e:
-            raise RuntimeError(f"Connessione MySQL fallita: {e}") from e
-        cur = conn.cursor()
-        cur.execute("SELECT id, type, " + ", ".join(FEATURES) + ", quality FROM wines")
-        df = pd.DataFrame(cur.fetchall(), columns=[c[0] for c in cur.description])
-        conn.close()
+        with DatabaseConnection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT id, type, " + ", ".join(FEATURES) + ", quality FROM wines")
+            df = pd.DataFrame(cur.fetchall(), columns=[c[0] for c in cur.description])
+            cur.close()
         df[FEATURES] = df[FEATURES].astype(float)
         return df
 

@@ -2,9 +2,12 @@
 Uso: python src/models/compare_models.py
 Produce una tabella RMSE/MAE/R2 per motivare la scelta del modello finale.
 """
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 import numpy as np
 import pandas as pd
-import mysql.connector
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import LinearRegression
@@ -12,8 +15,8 @@ from sklearn.model_selection import KFold, cross_validate
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-DB = dict(host="127.0.0.1", port=3306, user="winescout",
-          password="winescout", database="winescout")
+from src.database.connection import DatabaseConnection
+
 NUM = ["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar",
        "chlorides", "free_sulfur_dioxide", "total_sulfur_dioxide",
        "density", "ph", "sulphates", "alcohol"]
@@ -27,14 +30,11 @@ MODELS = {
 
 
 def load_from_db() -> pd.DataFrame:
-    try:
-        conn = mysql.connector.connect(**DB)
-    except mysql.connector.Error as e:
-        raise RuntimeError(f"Connessione MySQL fallita (docker compose up -d mysql?): {e}") from e
-    cur = conn.cursor()
-    cur.execute("SELECT type, " + ", ".join(NUM) + ", quality FROM wines")
-    df = pd.DataFrame(cur.fetchall(), columns=[c[0] for c in cur.description])
-    conn.close()
+    with DatabaseConnection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT type, " + ", ".join(NUM) + ", quality FROM wines")
+        df = pd.DataFrame(cur.fetchall(), columns=[c[0] for c in cur.description])
+        cur.close()
     df[NUM] = df[NUM].astype(float)
     df["quality"] = df["quality"].astype(int)
     return df
