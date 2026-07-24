@@ -8,10 +8,10 @@ CREATE TABLE wines (
     chlorides DECIMAL(6,3),
     free_sulfur_dioxide DECIMAL(6,1),
     total_sulfur_dioxide DECIMAL(6,1),
-    density DECIMAL(8,5),
+    density DECIMAL(9,6),
     ph DECIMAL(4,2),
     sulphates DECIMAL(5,2),
-    alcohol DECIMAL(4,1),
+    alcohol DECIMAL(5,2),
     quality TINYINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
