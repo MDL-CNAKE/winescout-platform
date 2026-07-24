@@ -1,0 +1,7 @@
+pandas
+scikit-learn
+streamlit
+mysql-connector-python
+joblib
+python-dotenv
+requests
