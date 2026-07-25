@@ -41,13 +41,24 @@ class WineRecommender:
 
     @staticmethod
     def _load() -> pd.DataFrame:
-        """Carica tutti i vini dal database, con le feature gia in float."""
+        """Carica tutti i vini dal database, con le feature gia in float.
+
+        Include anche name e price_eur (aggiunti dalle migrazioni V3/V4):
+        non servono al calcolo della similarita chimica, ma servono a
+        find_cheaper_alternative() per confrontare i prezzi.
+        """
         with DatabaseConnection() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT id, type, " + ", ".join(FEATURES) + ", quality FROM wines")
+            cur.execute(
+                "SELECT id, name, type, price_eur, " + ", ".join(FEATURES) + ", quality FROM wines"
+            )
             df = pd.DataFrame(cur.fetchall(), columns=[c[0] for c in cur.description])
             cur.close()
         df[FEATURES] = df[FEATURES].astype(float)
+        # MySQL restituisce le colonne DECIMAL come Decimal di Python, non
+        # float: senza questo cast le operazioni aritmetiche in
+        # find_cheaper_alternative() falliscono con TypeError.
+        df["price_eur"] = df["price_eur"].astype(float)
         return df
 
     def recommend(self, wine_id: int, top_n: int = 5, same_type: bool = True) -> pd.DataFrame:
@@ -80,7 +91,50 @@ class WineRecommender:
             result = result[result["type"] == self.df.loc[idx, "type"]]
 
         return result.nlargest(top_n, "similarity")[
-            ["id", "type", "alcohol", "ph", "residual_sugar", "quality", "similarity"]]
+            ["id", "name", "type", "alcohol", "ph", "residual_sugar", "quality", "price_eur", "similarity"]]
+
+
+    def find_cheaper_alternative(self, wine_id: int, max_candidates: int = 10) -> pd.DataFrame:
+        """Trova un'alternativa piu economica ma chimicamente simile.
+
+        Caso d'uso reale per un ristoratore/responsabile acquisti: "questo
+        vino sta per finire o e' troppo caro, qual e' il sostituto piu
+        simile che costa meno?". Cerca tra i piu simili (coseno) quelli con
+        prezzo inferiore al vino di partenza, e li ordina per il miglior
+        compromesso similarita/risparmio.
+
+        Args:
+            wine_id: id del vino da sostituire.
+            max_candidates: quanti vini simili considerare prima di filtrare
+                per prezzo (piu alto = ricerca piu ampia ma piu lenta).
+
+        Returns:
+            DataFrame con le alternative piu economiche trovate, ordinate
+            per punteggio combinato (similarita alta + risparmio alto),
+            oppure DataFrame vuoto se non esistono alternative piu economiche
+            tra i vini simili.
+
+        Raises:
+            ValueError: se wine_id non esiste nel catalogo.
+        """
+        matches = self.df.index[self.df["id"] == wine_id]
+        if len(matches) == 0:
+            raise ValueError(f"Vino con id={wine_id} non trovato nel catalogo")
+
+        base_price = float(self.df.loc[matches[0], "price_eur"])
+        candidates = self.recommend(wine_id, top_n=max_candidates, same_type=True)
+        cheaper = candidates[candidates["price_eur"] < base_price].copy()
+
+        if cheaper.empty:
+            return cheaper
+
+        # Punteggio combinato: 70% peso alla similarita chimica, 30% al
+        # risparmio percentuale. Pesi scelti per privilegiare la coerenza
+        # del profilo gustativo rispetto al solo risparmio economico.
+        cheaper["savings_pct"] = (base_price - cheaper["price_eur"]) / base_price
+        cheaper["score"] = 0.7 * cheaper["similarity"] + 0.3 * cheaper["savings_pct"]
+
+        return cheaper.sort_values("score", ascending=False)
 
 
 if __name__ == "__main__":

@@ -163,17 +163,45 @@ elif page == "🎯 Raccomandazioni":
     wine_ids = recommender.df["id"].tolist()
     selected_id = st.selectbox("Seleziona un vino di partenza (ID):", wine_ids)
 
-    if st.button("🎯 Trova Vini Simili", type="primary"):
+    col_a, col_b = st.columns(2)
+    find_similar = col_a.button("🎯 Trova Vini Simili", type="primary")
+    find_cheaper = col_b.button("💶 Trova Alternativa Più Economica")
+
+    if find_similar:
         try:
             recommendations = recommender.recommend(wine_id=selected_id, top_n=5, same_type=True)
             st.subheader(f"Top 5 vini simili al vino ID {selected_id}")
-            display_df = recommendations[["id", "type", "alcohol", "ph", "quality", "similarity"]].copy()
+            display_df = recommendations[["id", "name", "type", "alcohol", "ph", "quality", "price_eur", "similarity"]].copy()
             display_df["similarity"] = display_df["similarity"].apply(lambda x: f"{x:.2%}")
             display_df = display_df.rename(columns={
-                "id": "ID Vino", "type": "Tipo", "alcohol": "Alcol (%)",
-                "ph": "pH", "quality": "Qualità", "similarity": "Similarità",
+                "id": "ID Vino", "name": "Nome", "type": "Tipo", "alcohol": "Alcol (%)",
+                "ph": "pH", "quality": "Qualità", "price_eur": "Prezzo (EUR)", "similarity": "Similarità",
             })
             st.dataframe(display_df, use_container_width=True, hide_index=True)
+        except ValueError as e:
+            st.error(str(e))
+
+    if find_cheaper:
+        try:
+            alternatives = recommender.find_cheaper_alternative(wine_id=selected_id)
+            if alternatives.empty:
+                st.warning("Nessuna alternativa più economica trovata tra i vini chimicamente simili.")
+            else:
+                base_price = float(recommender.df.loc[recommender.df["id"] == selected_id, "price_eur"].iloc[0])
+                st.subheader(f"Alternative più economiche al vino ID {selected_id} ({base_price:.2f} EUR)")
+                display_df = alternatives[["id", "name", "price_eur", "similarity", "savings_pct"]].copy()
+                display_df["similarity"] = display_df["similarity"].apply(lambda x: f"{x:.2%}")
+                display_df["savings_pct"] = display_df["savings_pct"].apply(lambda x: f"{x:.1%}")
+                display_df = display_df.rename(columns={
+                    "id": "ID Vino", "name": "Nome", "price_eur": "Prezzo (EUR)",
+                    "similarity": "Similarità", "savings_pct": "Risparmio",
+                })
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+                st.caption(
+                    "Ordinato per un punteggio combinato: 70% similarità chimica, "
+                    "30% risparmio economico — privilegia la coerenza del profilo "
+                    "gustativo rispetto al solo prezzo più basso."
+                )
         except ValueError as e:
             st.error(str(e))
 
