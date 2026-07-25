@@ -161,7 +161,12 @@ elif page == "🎯 Raccomandazioni":
 
     recommender = get_recommender()
     wine_ids = recommender.df["id"].tolist()
-    selected_id = st.selectbox("Seleziona un vino di partenza (ID):", wine_ids)
+    id_to_name = dict(zip(recommender.df["id"], recommender.df["name"]))
+    selected_id = st.selectbox(
+        "Seleziona un vino di partenza:",
+        wine_ids,
+        format_func=lambda i: f"{id_to_name.get(i, i)} (ID {i})",
+    )
 
     col_a, col_b = st.columns(2)
     find_similar = col_a.button("🎯 Trova Vini Simili", type="primary")
