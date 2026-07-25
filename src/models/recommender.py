@@ -50,7 +50,7 @@ class WineRecommender:
         with DatabaseConnection() as conn:
             cur = conn.cursor()
             cur.execute(
-                "SELECT id, name, type, price_eur, " + ", ".join(FEATURES) + ", quality FROM wines"
+                "SELECT id, name, type, price_eur, food_pairing, " + ", ".join(FEATURES) + ", quality FROM wines"
             )
             df = pd.DataFrame(cur.fetchall(), columns=[c[0] for c in cur.description])
             cur.close()

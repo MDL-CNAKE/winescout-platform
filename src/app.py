@@ -41,7 +41,7 @@ def get_wines_from_db() -> pd.DataFrame:
     with DatabaseConnection() as conn:
         return pd.read_sql(
             "SELECT id, name, type, alcohol, ph, residual_sugar, quality, "
-            "price_eur, margin_pct FROM wines",
+            "price_eur, margin_pct, food_pairing FROM wines",
             conn,
         )
 
@@ -102,6 +102,29 @@ if page == "🍷 Catalogo Vini":
         c1.metric("Vini nel filtro", len(filtered_df))
         c2.metric("Prezzo medio", f"{filtered_df['price_eur'].mean():.2f} EUR")
         c3.metric("Margine medio", f"{filtered_df['margin_pct'].mean():.1f} %")
+
+        st.markdown("---")
+        st.subheader("Dettaglio vino e abbinamento")
+        id_to_name = dict(zip(filtered_df["id"], filtered_df["name"]))
+        sel = st.selectbox(
+            "Seleziona un vino per vedere l'abbinamento consigliato:",
+            filtered_df["id"].tolist(),
+            format_func=lambda i: id_to_name.get(i, i),
+        )
+        wine = filtered_df[filtered_df["id"] == sel].iloc[0]
+        d1, d2 = st.columns([1, 2])
+        with d1:
+            st.metric("Prezzo", f"{wine['price_eur']:.2f} EUR")
+            st.metric("Qualità", f"{int(wine['quality'])}/10")
+            st.metric("Alcol", f"{wine['alcohol']:.1f} %")
+        with d2:
+            st.markdown(f"**{wine['name']}**")
+            st.markdown(f"🍽️ **Abbinamento consigliato:** {wine['food_pairing']}")
+            st.caption(
+                "Abbinamento derivato dalle caratteristiche chimiche del vino "
+                "secondo i principi enologici di contrapposizione e concordanza "
+                "(vedi src/pairing.py)."
+            )
 
 # ==========================================
 # PAGINA 2: PREDIZIONE QUALITÀ
@@ -220,9 +243,31 @@ elif page == "🤖 Sommelier Virtuale":
     api_key = os.getenv("OPENROUTER_API_KEY", "")
     model_name = os.getenv("LLM_MODEL", "meta-llama/llama-3.1-8b-instruct")
 
+    # Contesto opzionale: l'utente puo scegliere un vino del catalogo, e le
+    # sue caratteristiche reali (incluso l'abbinamento calcolato dalle regole)
+    # vengono iniettate nel prompt. Questo ancora la risposta dell'LLM a dati
+    # concreti del database, riducendo le allucinazioni.
+    wines_ctx = get_wines_from_db()
+    id_to_name_ctx = dict(zip(wines_ctx["id"], wines_ctx["name"]))
+    use_wine = st.checkbox("Basa la risposta su un vino del catalogo")
+    wine_context = ""
+    if use_wine:
+        ctx_id = st.selectbox(
+            "Vino di riferimento:",
+            wines_ctx["id"].tolist(),
+            format_func=lambda i: id_to_name_ctx.get(i, i),
+        )
+        w = wines_ctx[wines_ctx["id"] == ctx_id].iloc[0]
+        wine_context = (
+            f"\n\nContesto dal database (usa questi dati reali nella risposta): "
+            f"vino '{w['name']}', tipo {w['type']}, alcol {w['alcohol']}%, "
+            f"qualità {int(w['quality'])}/10, prezzo {w['price_eur']} EUR. "
+            f"Abbinamento suggerito dal sistema: {w['food_pairing']}."
+        )
+
     prompt = st.text_area(
         "La tua domanda per il Sommelier:",
-        placeholder="Es: 'Qual è l'abbinamento ideale per un Pinot Nero con 13% di alcol e note di frutta rossa?'",
+        placeholder="Es: 'Qual è l'abbinamento ideale per questo vino? Descrivilo a un cliente.'",
         height=100,
     )
 
@@ -231,12 +276,23 @@ elif page == "🤖 Sommelier Virtuale":
             # Modalita demo: l'app resta dimostrabile anche senza una chiave
             # API valida, requisito implicito per una demo affidabile.
             st.warning("⚠️ **Modalità Demo:** API Key non configurata. Ecco una risposta simulata.")
-            st.info(
-                "**Sommelier AI:** Basandomi sulle migliori pratiche, un vino con queste "
-                "caratteristiche si abbina splendidamente a carni rosse arrosto o funghi "
-                "porcini. *(Risposta di fallback. Configura OPENROUTER_API_KEY nel file "
-                ".env per risposte reali).*"
-            )
+            if use_wine:
+                # In demo mostriamo comunque il dato reale del sistema per il
+                # vino selezionato, cosi la demo e' coerente e credibile.
+                st.info(
+                    f"**Sommelier AI (demo):** Per **{w['name']}** "
+                    f"({w['type']}, {w['alcohol']}% vol, qualità {int(w['quality'])}/10) "
+                    f"il nostro sistema suggerisce questo abbinamento:\n\n"
+                    f"🍽️ *{w['food_pairing']}*\n\n"
+                    "*(Risposta generata dalle regole del sistema. Configura "
+                    "OPENROUTER_API_KEY nel file .env per una descrizione elaborata dall'LLM.)*"
+                )
+            else:
+                st.info(
+                    "**Sommelier AI (demo):** Seleziona un vino del catalogo qui sopra "
+                    "per vedere un abbinamento reale, oppure configura OPENROUTER_API_KEY "
+                    "nel file .env per risposte elaborate dall'intelligenza artificiale."
+                )
         else:
             with st.spinner("Il sommelier sta preparando la risposta..."):
                 try:
@@ -254,7 +310,7 @@ elif page == "🤖 Sommelier Virtuale":
                                     "italiano in modo elegante, citando esame visivo, "
                                     "olfattivo e gustativo quando pertinente."
                                 )},
-                                {"role": "user", "content": prompt},
+                                {"role": "user", "content": prompt + wine_context},
                             ],
                         },
                     )
