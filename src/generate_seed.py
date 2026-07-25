@@ -1,15 +1,18 @@
-"""Genera db/migration/V2__seed_wines.sql dal CSV scaricato.
+"""Genera db/migration/V2__seed_wines.sql a partire dal CSV scaricato.
 
-I valori vengono formattati con lo stesso numero di decimali dichiarato
-nello schema (V1) per evitare warning "Data truncated": i float64 di
-pandas hanno artefatti di rappresentazione binaria (es. 0.99780000000001)
-che altrimenti superano la scala DECIMAL della colonna.
+Nota tecnica importante: i valori vengono formattati esplicitamente con lo
+stesso numero di decimali dichiarato nello schema (V1__init_schema.sql)
+invece di usare str() diretto sui float64 di pandas. Senza questo accorgimento
+i valori venivano scritti con decimali "sporchi" dovuti alla rappresentazione
+binaria dei float (es. 0.99780000000001 invece di 0.9978), causando warning
+"Data truncated" in MySQL in fase di inserimento. Vedi issue #26 per i dettagli.
 """
 import pandas as pd
 
 CSV, OUT, BATCH = "data/wine_quality_merged.csv", "db/migration/V2__seed_wines.sql", 500
 
-# Colonna -> numero di decimali, deve combaciare con V1__init_schema.sql
+# Colonna -> numero di decimali. Deve combaciare esattamente con la scala
+# DECIMAL definita in V1__init_schema.sql.
 SCALES = {
     "fixed_acidity": 2,
     "volatile_acidity": 3,
@@ -29,7 +32,8 @@ cols = ["type"] + list(SCALES.keys()) + ["quality"]
 df = df[cols]
 
 
-def row_sql(r):
+def row_sql(r: pd.Series) -> str:
+    """Costruisce la tupla SQL "(valore, valore, ...)" per una riga del dataset."""
     vals = [f"'{r['type']}'"]
     for c in SCALES:
         vals.append(f"{float(r[c]):.{SCALES[c]}f}")
@@ -39,6 +43,8 @@ def row_sql(r):
 
 with open(OUT, "w") as f:
     f.write("-- Seed generato da src/generate_seed.py, non modificare a mano\n")
+    # Inserimento a batch (500 righe per INSERT) invece di una riga per
+    # statement: riduce drasticamente il tempo di esecuzione della migrazione.
     for start in range(0, len(df), BATCH):
         chunk = df.iloc[start:start + BATCH]
         f.write("INSERT INTO wines (type,fixed_acidity,volatile_acidity,citric_acid,"

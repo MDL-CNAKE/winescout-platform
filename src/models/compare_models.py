@@ -1,6 +1,10 @@
-"""Confronta piu algoritmi di regressione con k-fold cross-validation.
-Uso: python src/models/compare_models.py
-Produce una tabella RMSE/MAE/R2 per motivare la scelta del modello finale.
+"""Confronta piu algoritmi di regressione tramite k-fold cross-validation.
+
+Obiettivo: motivare con dati (non con intuizione) la scelta dell'algoritmo
+finale usato in train.py, come richiesto dalla traccia ("valutazione con
+metriche appropriate... con split train/test o cross validation
+documentato"). I risultati di questo script sono citati nel commento di
+testa di train.py e nelle slide di presentazione.
 """
 import sys
 import os
@@ -22,6 +26,9 @@ NUM = ["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar",
        "density", "ph", "sulphates", "alcohol"]
 CAT = ["type"]
 
+# I tre algoritmi confrontati: uno lineare semplice (baseline), uno ensemble
+# a bagging (RandomForest) e uno ensemble a boosting (GradientBoosting) -
+# scelta che copre le famiglie di modelli viste a lezione.
 MODELS = {
     "LinearRegression": LinearRegression(),
     "RandomForest": RandomForestRegressor(n_estimators=200, random_state=42, n_jobs=-1),
@@ -30,6 +37,7 @@ MODELS = {
 
 
 def load_from_db() -> pd.DataFrame:
+    """Carica i dati di training da MySQL (stessa fonte usata da train.py)."""
     with DatabaseConnection() as conn:
         cur = conn.cursor()
         cur.execute("SELECT type, " + ", ".join(NUM) + ", quality FROM wines")
@@ -41,6 +49,9 @@ def load_from_db() -> pd.DataFrame:
 
 
 def build_pipeline(estimator) -> Pipeline:
+    """Pipeline di preprocessing identica per tutti i modelli confrontati,
+    cosi il confronto misura solo la differenza tra algoritmi e non tra
+    preprocessing diversi."""
     pre = ColumnTransformer([
         ("num", StandardScaler(), NUM),
         ("cat", OneHotEncoder(drop="first"), CAT),
