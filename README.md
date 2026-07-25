@@ -123,6 +123,8 @@ sistema RAG (opzionale), test automatici, slide di presentazione.
 - Limiti: le predizioni sono un supporto decisionale, non sostituiscono il giudizio
   di un sommelier professionista.
 
+ ## - EU AI Act: Il sistema rientra nella categoria di "rischio minimo", in quanto funge da supporto decisionale per l'utente e non prende decisioni autonome o vincolanti.
+
 ## Autore
 
 Marguerite Deido III El Mbimbey - Strumenti AI e Machine Learning con Python.
