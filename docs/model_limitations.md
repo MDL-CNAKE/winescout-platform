@@ -58,3 +58,60 @@ Possibili sviluppi futuri per affrontarlo attivamente:
 - **Qualità come giudizio soggettivo**: il punteggio del dataset deriva da
   valutazioni sensoriali umane, intrinsecamente soggettive; nessun modello
   può replicarle con precisione perfetta.
+
+## Bias culturale nel modello di embedding (sistema RAG)
+
+### Il problema individuato
+
+Durante lo sviluppo del sistema RAG per il Sommelier Virtuale abbiamo
+testato il recupero semantico con domande su cucine diverse. Il test ha
+rivelato un bias non previsto: il modello di embedding multilingue
+(`paraphrase-multilingual-MiniLM-L12-v2`) **non rappresenta correttamente i
+nomi di piatti extra-europei**.
+
+Interrogando il sistema con "che vino abbino al ndolè?" (piatto tradizionale
+camerunese), la ricerca puramente semantica **non recuperava** il documento
+della knowledge base dedicato proprio al ndolè, mentre domande equivalenti su
+piatti europei ("frittura di pesce", "dolce al cioccolato") recuperavano
+correttamente i documenti pertinenti.
+
+La causa e' che i modelli di embedding sono addestrati su corpora
+prevalentemente occidentali: termini culinari non occidentali sono rari o
+assenti nei dati di addestramento, quindi il modello non ne coglie il
+significato.
+
+### Perche' e' rilevante
+
+Un sistema di raccomandazione enologica costruito ingenuamente su ricerca
+semantica risulterebbe **sistematicamente meno utile per cucine non
+occidentali**, pur senza alcuna intenzione discriminatoria da parte di chi lo
+sviluppa. E' un esempio concreto di bias che si eredita dagli strumenti
+utilizzati, non dai propri dati.
+
+### Mitigazioni adottate
+
+1. **Knowledge base costruita sulle sensazioni, non sui piatti.** I documenti
+   descrivono dimensioni sensoriali universali (grassezza, sapidita, tendenza
+   amara, piccantezza, dolcezza) invece di elencare ricette. Qualsiasi piatto
+   del mondo puo essere abbinato scomponendolo nelle sue sensazioni, senza che
+   il sistema debba "conoscerlo" come ricetta.
+
+2. **Ricerca ibrida semantica + lessicale.** Al recupero per similarita
+   semantica e' stato affiancato un match testuale letterale, che promuove i
+   chunk contenenti esattamente i termini della domanda. Cosi nomi di piatti
+   sconosciuti al modello vengono comunque trovati se presenti nella knowledge
+   base (vedi `src/rag/retriever.py`).
+
+3. **Esempio cross-culturale esplicito nella knowledge base.** Il documento
+   `06_esempio_ndole_crossculturale.md` mostra la scomposizione sensoriale di
+   un piatto non europeo, sia come riferimento per il retrieval sia come
+   esempio di metodo per l'LLM.
+
+### Limite residuo
+
+Le mitigazioni riducono il problema ma non lo eliminano: per piatti non
+presenti nella knowledge base e sconosciuti al modello, il sistema dipende
+dalla capacita dell'LLM di scomporre correttamente il piatto nelle sue
+sensazioni. Un'estensione futura sarebbe ampliare la knowledge base con
+schede sensoriali di cucine diverse, redatte con il contributo di persone che
+le conoscono direttamente.

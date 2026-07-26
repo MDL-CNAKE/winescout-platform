@@ -128,3 +128,22 @@ sistema RAG (opzionale), test automatici, slide di presentazione.
 ## Autore
 
 Marguerite Deido III El Mbimbey - Strumenti AI e Machine Learning con Python.
+
+## Rigenerare i dati da zero
+
+Le migrazioni SQL sono versionate nella repo, quindi `docker compose up` funziona
+subito. Se invece vuoi **rigenerare** i dati (es. dopo aver modificato le regole di
+pricing o abbinamento), l'ordine e' importante perche' gli script partono dal CSV:
+
+    python src/data_loader.py      # 1. scarica il dataset UCI (crea data/)
+    python src/generate_seed.py    # 2. rigenera V2 (seed vini)
+    python src/pricing.py          # 3. rigenera V3 (prezzo e margine)
+    python src/naming.py           # 4. rigenera V4 (nomi descrittivi)
+    python src/pairing.py          # 5. rigenera V5 (abbinamento cibo-vino)
+    docker compose down -v && docker compose up --build
+
+Il CSV in `data/` non e' versionato (e' riproducibile scaricandolo di nuovo).
+
+## Documentazione aggiuntiva
+
+- [Limiti del modello e sbilanciamento dei dati](docs/model_limitations.md)

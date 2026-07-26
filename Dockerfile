@@ -2,8 +2,16 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# curl serve all'HEALTHCHECK: python:3.11-slim non lo include di default
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# --extra-index-url punta ai wheel CPU-only di PyTorch: evita di
+# scaricare lo stack CUDA (~2.3 GB) inutile senza GPU, l'immagine
+# resta di dimensioni ragionevoli.
+RUN pip install --no-cache-dir -r requirements.txt \
+    --extra-index-url https://download.pytorch.org/whl/cpu
 
 COPY src/ ./src/
 COPY models/ ./models/
