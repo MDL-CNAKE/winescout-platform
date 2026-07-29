@@ -284,7 +284,8 @@ def ask_sommelier(payload: SommelierRequest):
             },
             json={
                 "model": model_name,
-                "max_tokens": 900,
+                "max_tokens": 1500,
+                "reasoning": {"effort": "low"},
                 "messages": [
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": payload.question + wine_context + rag_context},
