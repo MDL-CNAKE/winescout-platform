@@ -15,3 +15,7 @@ torch>=2.0.0
 # Backend API (migrazione da Streamlit a React)
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
+
+# Test automatici
+pytest>=8.0.0
+httpx>=0.27.0
