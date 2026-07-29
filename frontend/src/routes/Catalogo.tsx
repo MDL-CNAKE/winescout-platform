@@ -1,12 +1,9 @@
-/**
- * Pagina Catalogo: equivalente React della pagina "Catalogo Vini" di
- * Streamlit. useQuery gestisce da solo caricamento/errore/cache — non
- * serve scrivere a mano lo stato di loading come si farebbe con
- * useState+useEffect.
- */
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchWines, type Wine } from "../api";
+import { fetchWines } from "../api";
+import { Carousel } from "../components/Carousel";
+import { WineCard } from "../components/WineCard";
+import { ChemicalRadar } from "../components/ChemicalRadar";
 
 export function Catalogo() {
   const { data: wines, isLoading, error } = useQuery({
@@ -60,35 +57,17 @@ export function Catalogo() {
 
       <p className="caption">
         Nota: prezzo e margine sono valori simulati con una logica di business
-        (vedi src/pricing.py), non prezzi reali di listino.
+        (vedi src/pricing.py), non prezzi reali di listino. Descrizioni delle
+        card generate dai dati chimici reali, non testo inventato.
       </p>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Tipo</th>
-            <th>Alcol %</th>
-            <th>Qualità</th>
-            <th>Prezzo EUR</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map((w: Wine) => (
-            <tr
-              key={w.id}
-              className={w.id === selectedId ? "selected" : ""}
-              onClick={() => setSelectedId(w.id)}
-            >
-              <td>{w.name}</td>
-              <td>{w.type}</td>
-              <td>{w.alcohol.toFixed(1)}</td>
-              <td>{w.quality}</td>
-              <td>{w.price_eur?.toFixed(2) ?? "-"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <p className="caption">{filtered.length} vini nel filtro corrente</p>
+
+      <Carousel>
+        {filtered.map((w) => (
+          <WineCard key={w.id} wine={w} selected={w.id === selectedId} onSelect={setSelectedId} />
+        ))}
+      </Carousel>
 
       {selected && (
         <div className="detail-card">
@@ -102,6 +81,7 @@ export function Catalogo() {
             Abbinamento derivato dalle caratteristiche chimiche del vino secondo
             i principi enologici di contrapposizione e concordanza (vedi src/pairing.py).
           </p>
+          <ChemicalRadar wine={selected} />
         </div>
       )}
     </section>

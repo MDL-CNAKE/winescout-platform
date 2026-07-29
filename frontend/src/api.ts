@@ -16,6 +16,10 @@ export interface Wine {
   alcohol: number;
   ph: number;
   residual_sugar: number;
+  fixed_acidity: number;
+  volatile_acidity: number;
+  chlorides: number;
+  sulphates: number;
   quality: number;
   price_eur: number | null;
   margin_pct: number | null;

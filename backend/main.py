@@ -91,7 +91,7 @@ app = FastAPI(title="WineScout API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5174"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -109,6 +109,10 @@ class Wine(BaseModel):
     alcohol: float
     ph: float
     residual_sugar: float
+    fixed_acidity: float
+    volatile_acidity: float
+    chlorides: float
+    sulphates: float
     quality: int
     price_eur: float | None
     margin_pct: float | None
@@ -121,7 +125,8 @@ def get_wines():
         with DatabaseConnection() as conn:
             cursor = conn.cursor(dictionary=True)
             cursor.execute(
-                "SELECT id, name, type, alcohol, ph, residual_sugar, quality, "
+                "SELECT id, name, type, alcohol, ph, residual_sugar, "
+                "fixed_acidity, volatile_acidity, chlorides, sulphates, quality, "
                 "price_eur, margin_pct, food_pairing FROM wines"
             )
             rows = cursor.fetchall()
