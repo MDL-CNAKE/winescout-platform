@@ -25,8 +25,43 @@ services:
       mysql:
         condition: service_healthy
 
-  app:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: winescout
+      DB_PASSWORD: winescout
+      DB_NAME: winescout
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-meta-llama/llama-3.1-8b-instruct}
+    depends_on:
+      flyway:
+        condition: service_completed_successfully
+    volumes:
+      - ./models:/app/models
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  # Versione Streamlit originale, mantenuta come demo di riserva durante la
+  # migrazione a React (facoltativa: "docker compose --profile legacy up").
+  # Non parte di default, cosi' non consuma risorse ne' entra in conflitto
+  # di porta con "backend" se non serve.
+  streamlit:
     build: .
+    profiles: ["legacy"]
     ports:
       - "8501:8501"
     environment:

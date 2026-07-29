@@ -1,5 +1,4 @@
 FROM python:3.11-slim
-
 WORKDIR /app
 
 # curl serve all'HEALTHCHECK: python:3.11-slim non lo include di default
@@ -15,10 +14,15 @@ RUN pip install --no-cache-dir -r requirements.txt \
 
 COPY src/ ./src/
 COPY models/ ./models/
+COPY docs/ ./docs/
+
+# Costruisce l'indice RAG (ChromaDB) durante il build dell'immagine,
+# cosi' e' sempre generato con la stessa versione di chromadb che lo
+# leggera' a runtime: nessun disallineamento, nessun passo manuale da
+# ricordare dopo un clone o un deploy.
+RUN python src/rag/build_index.py
 
 EXPOSE 8501
-
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
-
 ENTRYPOINT ["streamlit", "run", "src/app.py", "--server.port=8501", "--server.address=0.0.0.0"]

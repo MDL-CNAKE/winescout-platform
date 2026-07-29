@@ -147,3 +147,36 @@ Il CSV in `data/` non e' versionato (e' riproducibile scaricandolo di nuovo).
 ## Documentazione aggiuntiva
 
 - [Limiti del modello e sbilanciamento dei dati](docs/model_limitations.md)
+
+## Migrazione a FastAPI + React (in corso)
+
+L'interfaccia utente è in fase di migrazione da Streamlit a un frontend
+React (con TanStack Router/Query), separato da un backend FastAPI che
+espone la stessa logica Python già esistente (modello ML, recommender,
+RAG) come API REST. La versione Streamlit resta disponibile come demo di
+riserva (`docker compose --profile legacy up`) finché la migrazione non è
+completa e verificata.
+
+### Avvio in sviluppo (senza Docker)
+
+```bash
+# Backend (terminale 1)
+source venv/bin/activate
+pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+uvicorn backend.main:app --reload --port 8000
+
+# Frontend (terminale 2)
+cd frontend
+npm install
+npm run dev
+```
+
+Il frontend gira su `http://localhost:5173`, il backend su
+`http://localhost:8000` (documentazione interattiva su `/docs`).
+
+### Avvio con Docker
+
+```bash
+docker compose up -d --build          # mysql + flyway + backend + frontend
+docker compose --profile legacy up -d streamlit   # versione Streamlit, opzionale
+```

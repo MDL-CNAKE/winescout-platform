@@ -115,3 +115,19 @@ dalla capacita dell'LLM di scomporre correttamente il piatto nelle sue
 sensazioni. Un'estensione futura sarebbe ampliare la knowledge base con
 schede sensoriali di cucine diverse, redatte con il contributo di persone che
 le conoscono direttamente.
+
+## Assenza dell'informazione sul vitigno
+
+Il dataset UCI Wine Quality (rossi e bianchi "Vinho Verde" portoghesi) non
+include il vitigno (uva) di origine tra le sue colonne: contiene solo tipo
+(rosso/bianco), 11 proprietà chimico-fisiche e un punteggio di qualità.
+
+Per questo motivo il catalogo di WineScout non riporta e non inventa vitigni
+per i singoli vini. I nomi mostrati nel catalogo sono descrittivi, derivati
+dalla chimica (es. "Rosso Corposo Secco"), non nomi commerciali o varietali.
+
+Il Sommelier Virtuale (LLM) è vincolato via prompt di sistema a non associare
+mai un vitigno specifico a un vino del catalogo selezionato, per evitare di
+presentare all'utente un'informazione plausibile ma non verificabile dai dati
+di partenza. Il modello può discutere di vitigni solo in termini generali,
+quando la domanda non riguarda un vino specifico del catalogo.

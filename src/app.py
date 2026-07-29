@@ -16,6 +16,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.database.connection import DatabaseConnection
 from src.models.recommender import WineRecommender
+from src.rag.retriever import KnowledgeRetriever
 
 st.set_page_config(page_title="WineScout Platform", page_icon="🍷", layout="wide")
 
@@ -24,6 +25,20 @@ st.set_page_config(page_title="WineScout Platform", page_icon="🍷", layout="wi
 def load_model():
     """Carica il modello di predizione qualita gia addestrato (joblib)."""
     return joblib.load("models/quality_model.pkl")
+
+
+@st.cache_resource
+def get_retriever():
+    """Carica il sistema RAG (modello di embedding + indice ChromaDB).
+
+    Restituisce None se l'indice non e' stato costruito: l'app resta
+    utilizzabile senza RAG, degradando in modo controllato invece di
+    bloccarsi (l'utente viene avvisato nell'interfaccia).
+    """
+    try:
+        return KnowledgeRetriever()
+    except Exception:
+        return None
 
 
 @st.cache_resource
@@ -272,6 +287,30 @@ elif page == "🤖 Sommelier Virtuale":
     )
 
     if st.button("🤖 Chiedi al Sommelier", type="primary"):
+        # Fase di RETRIEVAL: recupera dalla knowledge base i passaggi
+        # pertinenti alla domanda, che verranno passati all'LLM come
+        # contesto verificato (riduce le allucinazioni).
+        retriever = get_retriever()
+        rag_context = ""
+        retrieved = []
+        if retriever is not None and prompt.strip():
+            retrieved = retriever.search(prompt, top_k=3)
+            rag_context = "\n\n" + retriever.build_context(prompt, top_k=3)
+        elif retriever is None:
+            st.info(
+                "Knowledge base non indicizzata: la risposta non sara' basata su "
+                "fonti verificate. Esegui `python src/rag/build_index.py` per attivarla."
+            )
+
+        # Trasparenza verso l'utente: mostra su quali fonti si basa la
+        # risposta, requisito etico del progetto.
+        if retrieved:
+            with st.expander(f"📚 Fonti consultate ({len(retrieved)} passaggi dalla knowledge base)"):
+                for i, passage in enumerate(retrieved, 1):
+                    st.markdown(f"**{i}. {passage.splitlines()[0]}**")
+                    body = "\n".join(passage.splitlines()[1:]).strip()
+                    st.caption(body[:400] + ("..." if len(body) > 400 else ""))
+
         if not api_key or api_key == "metti_qui_la_tua_chiave":
             # Modalita demo: l'app resta dimostrabile anche senza una chiave
             # API valida, requisito implicito per una demo affidabile.
@@ -304,13 +343,47 @@ elif page == "🤖 Sommelier Virtuale":
                         },
                         json={
                             "model": model_name,
+                            "max_tokens": 900,
                             "messages": [
                                 {"role": "system", "content": (
                                     "Sei un sommelier esperto e professionale. Rispondi in "
                                     "italiano in modo elegante, citando esame visivo, "
-                                    "olfattivo e gustativo quando pertinente."
+                                    "olfattivo e gustativo quando pertinente.\n\n"
+                                    "IMPORTANTE: se ti viene fornita una 'Conoscenza enologica "
+                                    "di riferimento', basa la risposta su quella invece che "
+                                    "sulla tua memoria. Se l'utente nomina un piatto che non "
+                                    "conosci, non rifiutare: scomponilo prima nelle sue "
+                                    "sensazioni dominanti (grassezza, sapidita, tendenza amara, "
+                                    "piccantezza, dolcezza, succulenza) e applica a quelle i "
+                                    "principi di abbinamento. Questo vale per qualsiasi cucina "
+                                    "del mondo, non solo europea.\n\n"
+                                    "VINCOLO SUL VITIGNO: il nostro catalogo NON contiene "
+                                    "l'informazione sul vitigno (uva) dei vini, solo tipo "
+                                    "(rosso/bianco), profilo chimico, nome descrittivo, prezzo "
+                                    "e abbinamento cibo. Se nel messaggio e' presente un vino "
+                                    "specifico del catalogo (sezione 'Vino selezionato'), NON "
+                                    "devi mai nominare o inventare un vitigno specifico per "
+                                    "quel vino (es. non dire 'e' un Vermentino' o 'e' fatto con "
+                                    "uve Sangiovese'): descrivilo solo con i dati reali forniti "
+                                    "(tipo, gradazione, profilo chimico, note sensoriali "
+                                    "plausibili derivate da quei dati). Puoi parlare di vitigni "
+                                    "in termini generali SOLO se la domanda e' generica e non "
+                                    "riguarda un vino specifico del catalogo.\n\n"
+                                    "BREVITA': rispondi in modo conciso, massimo 4-5 frasi in "
+                                    "un unico paragrafo scorrevole. Niente tabelle, niente "
+                                    "elenchi puntati lunghi, niente sezioni multiple con "
+                                    "titoli, a meno che l'utente non chieda esplicitamente "
+                                    "un'analisi dettagliata punto per punto.\n\n"
+                                    "ONESTA' SULL'ABBINAMENTO: non forzare un giudizio positivo "
+                                    "solo perche' l'utente ha selezionato quel vino. Valuta "
+                                    "onestamente quanto il vino scelto si adatta al piatto "
+                                    "richiesto. Se l'abbinamento e' solo parziale o non "
+                                    "ottimale, dillo chiaramente in una frase e specifica che "
+                                    "tipo di profilo enologico (es. piu' struttura, piu' "
+                                    "morbidezza, maggiore acidita', maggiore corpo) sarebbe "
+                                    "piu' indicato, invece di razionalizzare a tutti i costi."
                                 )},
-                                {"role": "user", "content": prompt + wine_context},
+                                {"role": "user", "content": prompt + wine_context + rag_context},
                             ],
                         },
                     )

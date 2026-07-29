@@ -11,3 +11,7 @@ python-dotenv>=1.0.0
 sentence-transformers>=2.2.0
 chromadb>=0.4.0
 torch>=2.0.0
+
+# Backend API (migrazione da Streamlit a React)
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
