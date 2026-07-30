@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.1.1",
+    "@fontsource/playfair-display": "^5.1.1",
     "@tanstack/react-query": "^5.66.0",
     "@tanstack/react-router": "^1.114.0",
     "axios": "^1.7.9",

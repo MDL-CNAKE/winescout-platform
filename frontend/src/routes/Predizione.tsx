@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { predictQuality, type PredictionInput } from "../api";
+import { ValidationNote } from "../components/ValidationNote";
 
 const DEFAULTS: PredictionInput = {
   type: "red",
@@ -108,13 +109,14 @@ export function Predizione() {
             <div>
               <h3>Punteggio Qualità Stimato</h3>
               <p className="caption">
-                Modello predittivo basato su dati storici. Il punteggio reale
-                può variare in base a fattori non chimici (annata, terroir,
-                affinamento).
+                Il punteggio reale può variare in base a fattori non chimici
+                (annata, terroir, affinamento) assenti dal dataset.
               </p>
             </div>
           </div>
         )}
+
+        <ValidationNote kind="predizione" />
       </div>
     </section>
   );

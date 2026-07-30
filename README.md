@@ -1,4 +1,4 @@
-# Bacchus - WineScout AI
+# CruScout - Il cruscotto del piccolo produttore
 
 > Dagli algoritmi al calice. Senza storie di fantasia.
 
@@ -234,6 +234,58 @@ Il frontend di sviluppo gira su `http://localhost:5173`, il backend su
 docker compose up -d --build                      # mysql + flyway + backend + frontend
 docker compose --profile legacy up -d streamlit   # versione Streamlit, opzionale
 ```
+
+## Identità del progetto: come si è arrivati al nome
+
+Il nome è **CruScout**, con payoff *Il cruscotto del piccolo produttore*. La
+scelta è documentata perché il percorso è passato per tre alternative
+scartate, e i motivi dello scarto sono ragionamento di dominio, non gusto.
+
+**"Bacchus"** (prima versione). Coerente con il Bacco adolescente di
+Caravaggio usato come sfondo, ma molto diffuso nel settore vino — quindi
+poco distintivo — e in inglese, mentre l'interfaccia è interamente in
+italiano.
+
+**"OXBacco"** (valutata, respinta). L'idea era unire l'esclamazione italiana
+a una sigla tecnica, con *OX* a richiamare ossigeno e ossidazione. Scartata
+perché **in enologia "ossidato" è un difetto**: un vino ossidato è
+maderizzato, deteriorato, e appartiene alla stessa famiglia di problemi
+dell'acidità volatile, che in questo dataset è proprio la variabile che
+misura il deterioramento. Costruire il marchio su un difetto sarebbe stato
+un messaggio contrario a quello del prodotto. In più il gioco di parole non
+arrivava: *OXBacco* si legge "oks-bacco", manca il "per", e un nome che va
+spiegato non sta funzionando.
+
+**"Oh, per Bacco!"** (valutata, respinta). Conservava l'esclamazione intera
+e restava in italiano, ma il registro colloquiale stonava con un prodotto
+che si presenta come strumento di analisi. Il tentativo di usare la testa
+del sommelier come O iniziale, inoltre, spezzava la parola alla lettura
+("icona-h, per Bacco!").
+
+**"CruScout"** regge su due letture sovrapposte:
+
+- *cru* è il termine enologico per la vigna di pregio, e *scout* descrive
+  ciò che il sistema fa davvero: esplorare un catalogo e selezionare;
+- per un lettore italiano **CruScout suona come "cruscotto"**, il quadro
+  strumenti da cui il produttore legge in un colpo d'occhio profilo chimico,
+  qualità stimata, prezzo, margine e abbinamenti. In italiano gestionale
+  "cruscotto direzionale" è terminologia corrente.
+
+La seconda lettura è quella che governa il payoff, ed è deliberatamente
+quella dominante: il dataset **non contiene terroir né origine geografica**,
+quindi un nome che promettesse la dimensione del *cru* in senso stretto
+prometterebbe ciò che il sistema non può mantenere — lo stesso criterio per
+cui il sommelier virtuale non nomina mai i vitigni. *Cru* resta come strato
+evocativo, *cruscotto* come promessa operativa.
+
+Il marchio grafico affianca al nome la testa del sommelier virtuale: un
+ovale bordato d'oro con tre punti colorati in fila, che legge insieme come
+lettera e come tavolozza da pittore, richiamando l'opera che fa da sfondo al
+sito. Lo stesso segno è la favicon, dove regge la lettura anche a 16px,
+dimensione alla quale la figura intera del sommelier collasserebbe.
+
+Nota: il nome è scelto per un progetto accademico e non è stato verificato
+come marchio registrabile.
 
 ## Crediti immagini
 

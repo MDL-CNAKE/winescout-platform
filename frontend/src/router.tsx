@@ -11,15 +11,18 @@ import { Raccomandazioni } from "./routes/Raccomandazioni";
 import { Packaging } from "./routes/Packaging";
 import { Sommelier } from "./routes/Sommelier";
 import { Vino } from "./routes/Vino";
+import { BrandLockup } from "./components/BrandLockup";
+import { PoweredBy } from "./components/PoweredBy";
 
 const rootRoute = createRootRoute({
   component: () => (
     <div className="app">
       <header>
-        <Link to="/" className="brand-mark">
-          <span className="brand-mark-name">Bacchus</span>
-          <span className="brand-mark-sub">WineScout AI</span>
+        <Link to="/" className="brand-mark" aria-label="CruScout — torna alla home">
+          <BrandLockup variant="header" />
+          <span className="brand-mark-sub">Il cruscotto del piccolo produttore</span>
         </Link>
+
         <nav>
           <Link to="/" activeProps={{ className: "active" }}>Home</Link>
           <Link to="/catalogo" activeProps={{ className: "active" }}>Catalogo Vini</Link>
@@ -29,6 +32,7 @@ const rootRoute = createRootRoute({
       <main>
         <Outlet />
       </main>
+      <PoweredBy />
       <footer className="site-footer">
         <p>
           Dati elaborati tramite API e modello predittivo su dataset enologico reale.

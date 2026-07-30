@@ -20,9 +20,10 @@ import {
   type PredictionInput,
 } from "../api";
 import { ChemicalRadar } from "../components/ChemicalRadar";
-import bottleRed from "../assets/bottles/bottle-red.jpg";
-import bottleWhite1 from "../assets/bottles/bottle-white-1.jpg";
-import bottleWhite2 from "../assets/bottles/bottle-white-2.jpg";
+import { ValidationNote } from "../components/ValidationNote";
+import { EmptyState } from "../components/EmptyState";
+import { wineTitle, wineLot, allPairings } from "../lib/wineLabel";
+import { BottleIcon } from "../components/BottleIcon";
 
 type Tab = "predizione" | "raccomandazioni" | "packaging" | "sommelier";
 
@@ -33,11 +34,6 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "sommelier", label: "Sommelier" },
 ];
 
-function bottlePhoto(w: Wine): string {
-  if (w.type === "red") return bottleRed;
-  return w.id % 2 === 0 ? bottleWhite1 : bottleWhite2;
-}
-
 export function Vino() {
   const { wineId } = useParams({ from: "/vino/$wineId" });
   const id = Number(wineId);
@@ -46,8 +42,23 @@ export function Vino() {
   const { data: wines, isLoading } = useQuery({ queryKey: ["wines"], queryFn: fetchWines });
   const wine = useMemo(() => wines?.find((w) => w.id === id) ?? null, [wines, id]);
 
-  if (isLoading) return <section><p>Caricamento vino...</p></section>;
-  if (!wine) return <section><p className="error">Vino non trovato.</p></section>;
+  if (isLoading) {
+    return (
+      <section>
+        <EmptyState title="Il sommelier sta recuperando la scheda..." loading />
+      </section>
+    );
+  }
+  if (!wine) {
+    return (
+      <section>
+        <EmptyState
+          title="Questo vino non è in catalogo."
+          hint="Torna al catalogo per sceglierne un altro."
+        />
+      </section>
+    );
+  }
 
   return (
     <section className="vino-layout">
@@ -63,7 +74,7 @@ export function Vino() {
             .map((w) => (
               <li key={w.id}>
                 <Link to="/vino/$wineId" params={{ wineId: String(w.id) }}>
-                  {w.name}
+                  {wineTitle(w.name)} <em>{wineLot(w.name)}</em>
                 </Link>
               </li>
             ))}
@@ -72,17 +83,30 @@ export function Vino() {
 
       <div className="vino-main">
         <div className="vino-hero">
-          <img src={bottlePhoto(wine)} alt={wine.name} className="vino-photo" />
+          <div className="vino-photo">
+            <BottleIcon wine={wine} size={230} />
+          </div>
           <div className="vino-meta">
-            <h2>{wine.name}</h2>
+            <h2>{wineTitle(wine.name)}</h2>
+            {wineLot(wine.name) && (
+              <p className="vino-lot">Lotto {wineLot(wine.name)}</p>
+            )}
             <p className="vino-stats">
               <span>{wine.type === "red" ? "Rosso" : "Bianco"}</span>
               <span>{wine.alcohol.toFixed(1)}% vol</span>
+              <span>pH {wine.ph.toFixed(2)}</span>
               <span>Qualità {wine.quality}/10</span>
               <span>{wine.price_eur?.toFixed(2) ?? "-"} €</span>
             </p>
-            {wine.food_pairing && (
-              <p className="hint"><strong>Abbinamento:</strong> {wine.food_pairing}</p>
+            {allPairings(wine).length > 0 && (
+              <div className="vino-pairings">
+                <p className="caption">Abbinamenti consigliati</p>
+                <ul>
+                  {allPairings(wine).map((dish) => (
+                    <li key={dish}>{dish}</li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         </div>
@@ -186,6 +210,7 @@ function TabPredizione({ wine }: { wine: Wine }) {
       )}
 
       <ChemicalRadar wine={wine} />
+      <ValidationNote kind="predizione" />
     </>
   );
 }
@@ -260,6 +285,8 @@ function TabRaccomandazioni({ wineId }: { wineId: number }) {
           </p>
         </>
       )}
+
+      <ValidationNote kind="raccomandazione" />
     </>
   );
 }

@@ -1,6 +1,31 @@
-export function RobotSommelierIcon() {
+/**
+ * Il sommelier robot, in due tagli.
+ *
+ * `SommelierMark` e' la sola testa, usata come marchio: a 16-48px la figura
+ * intera diventerebbe illeggibile (tavolino, bottiglia e calice collassano
+ * in una macchia), mentre l'ovale con i tre punti resta riconoscibile.
+ *
+ * `RobotSommelierIcon` e' la figura intera, per gli spazi dove c'e' aria:
+ * intestazione della pagina Sommelier, stati vuoti, caricamenti.
+ */
+
+/** Solo la testa: marchio per navbar, favicon e stati compatti. */
+export function SommelierMark({ size = 40 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 200 220" width="88" height="97" aria-hidden="true">
+    <svg viewBox="50 12 100 86" width={size} height={size * 0.86} aria-hidden="true">
+      <ellipse cx="100" cy="55" rx="46" ry="38" fill="#2a1015" stroke="#c9a24b" strokeWidth="4" />
+      <ellipse cx="108" cy="55" rx="20" ry="16" fill="#f3e6cf" />
+      <circle cx="72" cy="45" r="4" fill="#c9a24b" />
+      <circle cx="72" cy="58" r="4" fill="#e8d98a" />
+      <circle cx="72" cy="71" r="4" fill="#6d1b2f" />
+    </svg>
+  );
+}
+
+/** Figura intera, per intestazioni e stati con spazio a disposizione. */
+export function RobotSommelierIcon({ size = 150 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 200 220" width={size} height={size * 1.1} aria-hidden="true">
       <ellipse cx="100" cy="55" rx="46" ry="38" fill="#2a1015" stroke="#c9a24b" strokeWidth="4" />
       <ellipse cx="108" cy="55" rx="20" ry="16" fill="#f3e6cf" />
       <circle cx="72" cy="45" r="4" fill="#c9a24b" />

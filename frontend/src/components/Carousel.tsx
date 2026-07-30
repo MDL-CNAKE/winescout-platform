@@ -7,10 +7,13 @@ import { useRef, type ReactNode } from "react";
 export function Carousel({ children }: { children: ReactNode }) {
   const trackRef = useRef<HTMLDivElement>(null);
 
+  /** Scorre di una vista intera: le card sono dimensionate in frazioni
+   *  della larghezza, quindi un salto pieno allinea sempre l'inizio di una
+   *  card e non lascia mai mezze card visibili. */
   const scroll = (dir: 1 | -1) => {
     const el = trackRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: "smooth" });
+    el.scrollBy({ left: dir * el.clientWidth, behavior: "smooth" });
   };
 
   return (
