@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { fetchWines, askSommelier } from "../api";
+import { RobotSommelierIcon } from "../components/RobotSommelierIcon";
 
 export function Sommelier() {
   const { data: wines } = useQuery({ queryKey: ["wines"], queryFn: fetchWines });
@@ -20,16 +21,21 @@ export function Sommelier() {
 
   return (
     <section>
-      <h2>Sommelier Virtuale AI</h2>
-      <p className="hint">Chiedi consigli su abbinamenti, note di degustazione o curiosità sul vino.</p>
+      <div className="sommelier-header">
+        <RobotSommelierIcon />
+        <div>
+          <h2>Sommelier Virtuale AI</h2>
+          <p className="hint">Chiedi consigli su abbinamenti, note di degustazione o curiosità sul vino.</p>
+        </div>
+      </div>
 
-      <label>
+      <label className="checkbox-row">
         <input type="checkbox" checked={useWine} onChange={(e) => setUseWine(e.target.checked)} />
-        Basa la risposta su un vino del catalogo
+        <span>Basa la risposta su un vino del catalogo</span>
       </label>
 
       {useWine && (
-        <label>
+        <label className="field-block">
           Vino di riferimento
           <select value={wineId ?? ""} onChange={(e) => setWineId(Number(e.target.value))}>
             <option value="">Seleziona...</option>
@@ -41,6 +47,7 @@ export function Sommelier() {
       )}
 
       <textarea
+        className="sommelier-input"
         placeholder="Es: 'Qual è l'abbinamento ideale per questo vino? Descrivilo a un cliente.'"
         rows={4}
         value={question}
@@ -48,10 +55,11 @@ export function Sommelier() {
       />
 
       <button
+        className="btn-primary"
         disabled={!question.trim() || mutation.isPending}
         onClick={() => mutation.mutate()}
       >
-        {mutation.isPending ? "Il sommelier sta pensando..." : "🤖 Chiedi al Sommelier"}
+        {mutation.isPending ? "Il sommelier sta pensando..." : "Chiedi al Sommelier"}
       </button>
 
       {mutation.isError && <p className="error">Errore nella chiamata al Sommelier.</p>}
@@ -59,11 +67,11 @@ export function Sommelier() {
       {mutation.isSuccess && (
         <div className="result-card">
           {mutation.data.demo_mode && (
-            <p className="warning">⚠️ Modalità Demo: API Key non configurata. Risposta simulata.</p>
+            <p className="warning">Modalità demo: API key non configurata, risposta simulata.</p>
           )}
           {mutation.data.sources.length > 0 && (
             <details>
-              <summary>📚 Fonti consultate ({mutation.data.sources.length} passaggi dalla knowledge base)</summary>
+              <summary>Fonti consultate ({mutation.data.sources.length} passaggi)</summary>
               {mutation.data.sources.map((s, i) => (
                 <p key={i} className="caption">{s.slice(0, 400)}...</p>
               ))}

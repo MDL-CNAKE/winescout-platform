@@ -37,59 +37,85 @@ const FIELDS: { key: keyof PredictionInput; label: string; step: number; min: nu
 
 export function Predizione() {
   const [form, setForm] = useState<PredictionInput>(DEFAULTS);
-
   const mutation = useMutation({ mutationFn: predictQuality });
 
   return (
-    <section>
-      <h2>Predizione Punteggio Qualità</h2>
-      <p className="hint">
-        Inserisci le caratteristiche chimiche del vino per ottenere una stima
-        del punteggio (0-10).
-      </p>
+    <section className="page page-predizione">
+      <header className="page-header">
+        <h2>
+          <svg
+            className="page-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 17l5-6 4 4 5-7 4 5" />
+            <path d="M3 21h18" />
+          </svg>
+          Predizione Punteggio Qualità
+        </h2>
+        <p className="hint">
+          Inserisci le caratteristiche chimiche del vino per ottenere una stima
+          del punteggio (0-10) generata dal modello di machine learning.
+        </p>
+      </header>
 
-      <label>
-        Tipo
-        <select
-          value={form.type}
-          onChange={(e) => setForm({ ...form, type: e.target.value as "red" | "white" })}
-        >
-          <option value="red">red</option>
-          <option value="white">white</option>
-        </select>
-      </label>
+      <div className="predizione-card">
+        <label className="type-select">
+          Tipo di vino
+          <select
+            value={form.type}
+            onChange={(e) => setForm({ ...form, type: e.target.value as "red" | "white" })}
+          >
+            <option value="red">Rosso</option>
+            <option value="white">Bianco</option>
+          </select>
+        </label>
 
-      <div className="form-grid">
-        {FIELDS.map((f) => (
-          <label key={f.key}>
-            {f.label}
-            <input
-              type="number"
-              step={f.step}
-              min={f.min}
-              max={f.max}
-              value={form[f.key] as number}
-              onChange={(e) => setForm({ ...form, [f.key]: Number(e.target.value) })}
-            />
-          </label>
-        ))}
-      </div>
-
-      <button onClick={() => mutation.mutate(form)} disabled={mutation.isPending}>
-        {mutation.isPending ? "Calcolo..." : "🔮 Predici Qualità"}
-      </button>
-
-      {mutation.isError && <p className="error">Errore nella predizione. Riprova.</p>}
-
-      {mutation.isSuccess && (
-        <div className="result-card">
-          <h3>Punteggio Qualità Stimato: {mutation.data.quality} / 10</h3>
-          <p className="caption">
-            Nota: questo è un modello predittivo basato su dati storici. Il
-            punteggio reale può variare.
-          </p>
+        <div className="form-grid">
+          {FIELDS.map((f) => (
+            <label key={f.key} className="form-field">
+              <span>{f.label}</span>
+              <input
+                type="number"
+                step={f.step}
+                min={f.min}
+                max={f.max}
+                value={form[f.key] as number}
+                onChange={(e) => setForm({ ...form, [f.key]: Number(e.target.value) })}
+              />
+            </label>
+          ))}
         </div>
-      )}
+
+        <button
+          className="btn-primary"
+          onClick={() => mutation.mutate(form)}
+          disabled={mutation.isPending}
+        >
+          {mutation.isPending ? "Calcolo in corso..." : "Predici Qualità"}
+        </button>
+
+        {mutation.isError && <p className="error">Errore nella predizione. Riprova.</p>}
+
+        {mutation.isSuccess && (
+          <div className="result-card result-card--score">
+            <span className="result-badge">{mutation.data.quality}<small>/10</small></span>
+            <div>
+              <h3>Punteggio Qualità Stimato</h3>
+              <p className="caption">
+                Modello predittivo basato su dati storici. Il punteggio reale
+                può variare in base a fattori non chimici (annata, terroir,
+                affinamento).
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

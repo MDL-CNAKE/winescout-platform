@@ -3,23 +3,145 @@
   --bordeaux-dark: #4a1220;
   --gold: #c9a24b;
   --bg: #faf7f2;
+  --ink: #140810;
+  --cream: #f4ece2;
+  --gold-light: #e7d3a3;
   --text: #2a2a2a;
   font-family: "Segoe UI", system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
 
-body { margin: 0; background: var(--bg); color: var(--text); }
+/* Sfondo globale: il Bacco di Caravaggio è sempre visibile per intero
+   (background-size: contain, nessun ritaglio: si vedono entrambe le mani
+   e il calice). L'immagine resta ferma mentre il contenuto scorre sopra. */
+body {
+  margin: 0;
+  color: var(--text);
+  background-color: var(--ink);
+  background-image:
+    linear-gradient(rgba(20, 8, 12, 0.45), rgba(20, 8, 12, 0.65)),
+    url("./assets/hero.jpg");
+  background-position: center top;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
 
-.app { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+.app { max-width: 960px; margin: 0 auto; padding: 1.5rem; background: transparent; }
 
-header { border-bottom: 2px solid var(--gold); padding-bottom: 1rem; margin-bottom: 1.5rem; }
-header h1 { color: var(--bordeaux); margin-bottom: 0.2rem; }
-.tagline { color: #666; font-style: italic; margin-top: 0; }
+/* Header e landing: pannelli scuri, testo chiaro. Il dipinto resta
+   leggibile sotto senza essere sbiadito da un velo bianco. */
+.app > header,
+.home-hero {
+  background: rgba(26, 11, 16, 0.55);
+  backdrop-filter: blur(8px) saturate(1.1);
+  -webkit-backdrop-filter: blur(8px) saturate(1.1);
+  border-radius: 12px;
+  padding: 1.5rem 2.25rem;
+  margin-bottom: 1.5rem;
+}
 
-nav { display: flex; gap: 1rem; margin-top: 1rem; }
-nav a { text-decoration: none; color: var(--bordeaux); padding: 0.4rem 0.8rem; border-radius: 4px; }
-nav a.active { background: var(--bordeaux); color: white; }
+/* Pagine operative (catalogo, form, tabelle): pannello chiaro, dove la
+   priorità è leggere dati fitti, non l'atmosfera. */
+main > section:not(.home-hero) {
+  background: rgba(26, 11, 16, 0.72);
+  backdrop-filter: blur(8px) saturate(1.1);
+  -webkit-backdrop-filter: blur(8px) saturate(1.1);
+  border-radius: 12px;
+  padding: 1.5rem 2.25rem;
+  margin-bottom: 1.5rem;
+  color: var(--cream);
+}
+
+/* Header: marchio a sinistra, navigazione a destra — layout bilanciato. */
+.app > header {
+  border-bottom: 2px solid var(--gold-light);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.brand-mark {
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.brand-mark-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--gold-light);
+}
+.brand-mark-sub {
+  font-size: 0.6rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: rgba(244, 236, 226, 0.55);
+}
+.app > header nav { margin-top: 0; }
+
+/* Intestazione interna alle pagine: nessun contenitore aggiuntivo, solo
+   spaziatura — evita l'effetto "scatole dentro scatole". */
+.page-header {
+  background: transparent;
+  padding: 0;
+  margin-bottom: 1.5rem;
+}
+.page-header h2 { margin-top: 0; display: flex; align-items: center; gap: 0.6rem; }
+.page-header .hint { margin-bottom: 0; }
+.page-icon { width: 1.5rem; height: 1.5rem; flex-shrink: 0; }
+/* ===== Marchio (solo Home): nome grande al centro + payoff sotto ===== */
+.brand-block {
+  padding: 0.5rem 0 1.25rem;
+  border-bottom: 1px solid rgba(231, 211, 163, 0.55);
+  margin-bottom: 1.5rem;
+}
+.brand-name {
+  color: var(--cream);
+  margin: 0;
+  font-size: 4.25rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+.brand-sub {
+  margin: 0.6rem 0 0;
+  color: var(--gold-light);
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+}
+
+/* Navbar a bottoni: unico punto di navigazione del sito (la Home non
+   ripete gli stessi link). */
+nav { display: flex; flex-wrap: nowrap; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
+nav a {
+  text-decoration: none;
+  white-space: nowrap;
+  color: var(--cream);
+  background: transparent;
+  border: 1px solid rgba(244, 236, 226, 0.26);
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+nav a:hover {
+  background: rgba(244, 236, 226, 0.14);
+  border-color: var(--gold-light);
+}
+nav a.active {
+  background: var(--gold-light);
+  color: #2b1208;
+  border-color: var(--gold-light);
+  font-weight: 600;
+}
 
 h2 { color: var(--bordeaux-dark); }
 
@@ -38,7 +160,7 @@ tr:hover { background: #f5efe6; cursor: pointer; }
 tr.selected { background: #f0e2c8; }
 
 .detail-card, .result-card {
-  background: white;
+  background: rgba(255, 255, 255, 0.72);
   border-left: 4px solid var(--gold);
   padding: 1rem 1.5rem;
   margin-top: 1rem;
@@ -77,3 +199,654 @@ textarea, select, input {
 .wine-card h4 { margin: 0.5rem 0 0.25rem; font-size: 0.95rem; color: var(--bordeaux-dark); }
 .wine-card-desc { font-size: 0.78rem; color: #666; min-height: 3.4em; }
 .wine-card-stats { display: flex; justify-content: space-between; width: 100%; font-size: 0.8rem; font-weight: 600; color: var(--bordeaux); margin-top: 0.5rem; }
+
+.sommelier-header { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem; }
+.sommelier-header h2 { margin-bottom: 0.25rem; }
+
+/* ===== Predizione / Raccomandazioni — coerenza visiva con Catalogo ===== */
+
+.page-header {
+  margin-bottom: 1.5rem;
+}
+.page-header h2 {
+  color: var(--bordeaux-dark, #6b1f2a);
+  margin-bottom: 0.4rem;
+}
+
+.predizione-card {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(107, 31, 42, 0.15);
+  border-radius: 12px;
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  margin-bottom: 2rem;
+}
+
+.type-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-width: 260px;
+  margin-bottom: 1.25rem;
+  font-weight: 600;
+  color: var(--bordeaux-dark, #6b1f2a);
+}
+.type-select select {
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid rgba(107, 31, 42, 0.3);
+  font-size: 1rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+.form-field span {
+  font-weight: 600;
+  color: var(--bordeaux-dark, #6b1f2a);
+}
+.form-field input {
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 0.95rem;
+}
+.form-field input:focus {
+  outline: none;
+  border-color: var(--gold, #c9a227);
+  box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.25);
+}
+
+.btn-primary,
+.btn-secondary {
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem 1.4rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--bordeaux-dark, #6b1f2a), #8a2b3a);
+  color: #fff;
+}
+.btn-secondary {
+  background: #fff;
+  color: var(--bordeaux-dark, #6b1f2a);
+  border: 1.5px solid var(--bordeaux-dark, #6b1f2a);
+}
+.btn-primary:hover:not(:disabled),
+.btn-secondary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(107, 31, 42, 0.25);
+}
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Card risultato: di base a blocco (testo lungo). Solo la variante con
+   badge di punteggio usa il layout affiancato. */
+.result-card {
+  margin-top: 1.75rem;
+  display: block;
+  background: linear-gradient(135deg, #fdf6e9, #fbeedd);
+  border: 1px solid rgba(201, 162, 39, 0.4);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+}
+.result-card--score {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+.result-badge {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--bordeaux-dark, #6b1f2a);
+  line-height: 1;
+}
+.result-badge small {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #888;
+}
+.result-card h3 {
+  margin: 0 0 0.3rem;
+  color: var(--bordeaux-dark, #6b1f2a);
+}
+
+.reco-results {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(107, 31, 42, 0.15);
+  border-radius: 12px;
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+.reco-results h3 {
+  color: var(--bordeaux-dark, #6b1f2a);
+  margin-top: 0;
+}
+
+.reco-table-wrap {
+  overflow-x: auto;
+}
+.reco-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.reco-table th {
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  background: var(--bordeaux-dark, #6b1f2a);
+  color: #fff;
+  font-weight: 600;
+}
+.reco-table th:first-child { border-radius: 8px 0 0 0; }
+.reco-table th:last-child { border-radius: 0 8px 0 0; }
+.reco-table td {
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid #eee;
+}
+.reco-table tbody tr:hover {
+  background: #fdf6e9;
+}
+
+.similarity-pill,
+.savings-pill {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.similarity-pill {
+  background: rgba(107, 31, 42, 0.1);
+  color: var(--bordeaux-dark, #6b1f2a);
+}
+.savings-pill {
+  background: rgba(46, 125, 50, 0.12);
+  color: #2e7d32;
+}
+
+/* ===== Home ===== */
+.home-hero {
+  text-align: center;
+  padding: 1.75rem 2.25rem 2rem;
+}
+.home-claim {
+  font-size: 1.6rem;
+  line-height: 1.45;
+  color: var(--cream);
+  font-weight: 600;
+  margin: 0 auto 1.25rem;
+  max-width: 620px;
+}
+.home-desc {
+  max-width: 560px;
+  margin: 0 auto;
+  line-height: 1.7;
+  color: rgba(244, 236, 226, 0.82);
+}
+.home-hero h2 {
+  color: var(--bordeaux-dark);
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+.home-hero .hint {
+  max-width: 560px;
+  margin: 0 auto 1.5rem;
+}
+.home-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+.home-links a {
+  text-decoration: none;
+  display: inline-block;
+}
+
+/* ===== Packaging ===== */
+.packaging-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.packaging-card {
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  border-top: 4px solid var(--gold);
+}
+.packaging-card h4 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.9rem;
+  color: var(--bordeaux-dark);
+}
+.packaging-style-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(107, 31, 42, 0.1);
+  color: var(--bordeaux-dark);
+  margin-bottom: 0.4rem;
+}
+.packaging-card.style-elegante { border-top-color: var(--gold); }
+.packaging-card.style-classico { border-top-color: var(--bordeaux); }
+.packaging-card.style-moderno { border-top-color: #6d8b9c; }
+.packaging-card.style-young { border-top-color: #d97b4f; }
+
+/* ===== Foto reali card vino ===== */
+.wine-card-photo {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+.wine-card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wine-card-lot {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(20, 8, 12, 0.78);
+  color: var(--gold-light);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+}
+
+/* =====================================================================
+   TEMA SCURO — coerenza con la Home su tutte le pagine operative.
+   Sovrascrive le regole chiare definite sopra: il contenuto vive su
+   pannelli "vetro fumé" invece che su bianco pieno, evitando lo stacco
+   brusco fra header scuro e pagine chiare.
+   ===================================================================== */
+
+main h2 { color: var(--gold-light); }
+main h3, main h4 { color: var(--cream); }
+main .hint { color: rgba(244, 236, 226, 0.78); }
+main .caption { color: rgba(244, 236, 226, 0.55); }
+main p, main span, main td, main li { color: var(--cream); }
+main .error { color: #ff8f8f; }
+
+/* Campi di input e select: stile coerente, non più quello nativo. */
+main select,
+main input,
+main textarea {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(244, 236, 226, 0.28);
+  color: var(--cream);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+main select option { background: #241017; color: var(--cream); }
+main select:focus,
+main input:focus,
+main textarea:focus {
+  outline: none;
+  border-color: var(--gold-light);
+  box-shadow: 0 0 0 2px rgba(231, 211, 163, 0.22);
+}
+main label { color: rgba(244, 236, 226, 0.8); }
+main .form-field span { color: var(--gold-light); }
+
+/* Card e pannelli interni: vetro chiaro su fondo scuro. */
+main .wine-card,
+main .packaging-card,
+main .detail-card,
+main .result-card,
+main .predizione-card,
+main .reco-results {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(231, 211, 163, 0.22);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+main .wine-card:hover { border-color: var(--gold-light); }
+main .wine-card.selected {
+  border: 1.5px solid var(--gold-light);
+  background: rgba(231, 211, 163, 0.12);
+}
+main .wine-card h4 {
+  color: var(--gold-light);
+  font-size: 0.92rem;
+  line-height: 1.35;
+  min-height: 2.6em;
+}
+main .wine-card-desc { color: rgba(244, 236, 226, 0.7); }
+main .wine-card-stats { color: var(--gold-light); }
+main .detail-card, main .result-card { border-left: 4px solid var(--gold-light); }
+main .result-badge, main .result-card h3 { color: var(--gold-light); }
+
+/* Freccia del carosello: sempre staccata dallo sfondo. */
+main .carousel-arrow {
+  background: rgba(20, 8, 12, 0.9);
+  color: var(--gold-light);
+  border: 1px solid rgba(231, 211, 163, 0.5);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+main .carousel-arrow:hover:not(:disabled) {
+  background: var(--gold-light);
+  color: #2b1208;
+}
+
+/* Tabelle raccomandazioni. */
+main .reco-table th { background: rgba(231, 211, 163, 0.16); color: var(--gold-light); }
+main .reco-table td { border-bottom: 1px solid rgba(244, 236, 226, 0.14); }
+main .reco-table tbody tr:hover { background: rgba(231, 211, 163, 0.08); }
+main .similarity-pill {
+  background: rgba(231, 211, 163, 0.16);
+  color: var(--gold-light);
+}
+main .savings-pill { background: rgba(120, 200, 130, 0.16); color: #9fdcaa; }
+
+/* Badge di stile nella galleria packaging. */
+main .packaging-style-badge {
+  background: rgba(231, 211, 163, 0.16);
+  color: var(--gold-light);
+}
+main .packaging-card h4 { color: var(--gold-light); }
+
+/* Bottoni secondari sul fondo scuro. */
+main .btn-secondary {
+  background: transparent;
+  color: var(--cream);
+  border: 1px solid rgba(244, 236, 226, 0.4);
+}
+main .btn-secondary:hover:not(:disabled) { border-color: var(--gold-light); }
+main .btn-primary { background: linear-gradient(135deg, #7d2233, #a3384a); }
+
+/* --- Titoli ed etichette: mai bordeaux su fondo scuro (illeggibile) --- */
+main .page-header h2,
+main .reco-results h3,
+main .result-card h3,
+main .predizione-card h3,
+main .home-hero h2 { color: var(--gold-light); }
+main .type-select,
+main .field-block,
+main label { color: rgba(244, 236, 226, 0.85); }
+main .type-select select,
+main .form-field input {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(231, 211, 163, 0.35);
+  color: var(--cream);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+}
+
+/* --- Bottoni: un solo stile primario, oro caldo su testo scuro --- */
+main button,
+main .btn-primary {
+  background: linear-gradient(135deg, var(--gold-light), #d4b878);
+  color: #2b1208;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem 1.4rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+main button:hover:not(:disabled),
+main .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f2e0b6, var(--gold-light));
+  transform: translateY(-1px);
+}
+main button:disabled,
+main .btn-primary:disabled {
+  background: rgba(244, 236, 226, 0.18);
+  color: rgba(244, 236, 226, 0.45);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* --- Sommelier: checkbox in linea, campo domanda a tutta larghezza --- */
+.checkbox-row {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+.checkbox-row input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  padding: 0;
+  accent-color: var(--gold-light);
+  flex-shrink: 0;
+}
+.field-block { max-width: 420px; margin-bottom: 1rem; }
+main details summary {
+  cursor: pointer;
+  color: rgba(244, 236, 226, 0.7);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+main .result-card > p { margin: 0 0 0.75rem; line-height: 1.65; }
+main .result-card > p:last-child { margin-bottom: 0; }
+.sommelier-input {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  margin-bottom: 1rem;
+}
+main .sommelier-input::placeholder { color: rgba(244, 236, 226, 0.45); }
+
+/* --- Packaging: segnaposto neutro dove manca la foto reale --- */
+main .packaging-card svg {
+  opacity: 0.6;
+  filter: grayscale(0.55);
+  height: 140px;
+  margin-bottom: 0.5rem;
+}
+
+/* =====================================================================
+   PAGINA VINO — sidebar con gli altri vini + scheda con quattro tab
+   ===================================================================== */
+.vino-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+@media (max-width: 780px) {
+  .vino-layout { grid-template-columns: 1fr; }
+  .vino-sidebar { order: 2; }
+}
+
+.vino-sidebar {
+  border-right: 1px solid rgba(244, 236, 226, 0.15);
+  padding-right: 1.25rem;
+}
+.vino-nav-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.vino-nav-buttons a {
+  text-decoration: none;
+  text-align: center;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem;
+}
+.vino-sidebar-title {
+  margin: 0 0 0.6rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+.vino-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.vino-list li { margin-bottom: 0.15rem; }
+.vino-list a {
+  display: block;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: rgba(244, 236, 226, 0.7);
+  text-decoration: none;
+}
+.vino-list a:hover {
+  background: rgba(231, 211, 163, 0.12);
+  color: var(--gold-light);
+}
+
+.vino-hero {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+.vino-photo {
+  width: 190px;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 10px;
+  flex-shrink: 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.vino-meta h2 { margin-top: 0; }
+.vino-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  font-weight: 600;
+  color: var(--gold-light);
+  margin: 0.25rem 0 0.75rem;
+}
+
+.vino-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  border-bottom: 1px solid rgba(244, 236, 226, 0.18);
+  margin-bottom: 1.5rem;
+  justify-content: flex-start;
+}
+main .vino-tab {
+  background: transparent;
+  color: rgba(244, 236, 226, 0.7);
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+main .vino-tab:hover:not(.active) {
+  background: transparent;
+  color: var(--cream);
+  transform: none;
+}
+main .vino-tab.active {
+  background: transparent;
+  color: var(--gold-light);
+  border-bottom-color: var(--gold-light);
+  transform: none;
+}
+.vino-tab-panel h3 { margin-top: 1.75rem; }
+.vino-tab-panel h3:first-child { margin-top: 0; }
+.vino-tab-panel a { color: var(--gold-light); }
+
+.packaging-specs {
+  margin: 0;
+  display: grid;
+  gap: 0.9rem;
+}
+.packaging-specs dt {
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(244, 236, 226, 0.55);
+  margin-bottom: 0.2rem;
+}
+.packaging-specs dd { margin: 0; color: var(--cream); }
+
+/* --- Scrollbar a tema: niente barra bianca di sistema sul fondo scuro --- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(231, 211, 163, 0.45) transparent;
+}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(231, 211, 163, 0.35);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(231, 211, 163, 0.6); }
+
+/* --- Foto bottiglie: leggera correzione calda per non stridere con la
+   palette bordeaux/oro. Rimedio temporaneo: la soluzione vera è uno
+   scatto su fondo neutro o scuro. --- */
+.vino-photo,
+.wine-card-photo img {
+  filter: saturate(0.82) sepia(0.1) brightness(0.95);
+}
+
+/* ===== Footer: qui vivono le note tecniche, fuori dal flusso utente. */
+.site-footer {
+  margin-top: 2rem;
+  padding: 1rem 1.5rem 0;
+  border-top: 1px solid rgba(244, 236, 226, 0.18);
+}
+.site-footer p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: rgba(244, 236, 226, 0.5);
+  text-align: center;
+}
+
+/* ===== Foto reali packaging ===== */
+.packaging-photo {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}

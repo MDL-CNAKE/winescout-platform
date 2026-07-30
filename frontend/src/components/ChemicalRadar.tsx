@@ -42,15 +42,15 @@ export function ChemicalRadar({ wine }: { wine: Wine }) {
     <div className="radar-wrapper">
       <ResponsiveContainer width="100%" height={260}>
         <RadarChart data={data}>
-          <PolarGrid stroke="#e0d5c0" />
-          <PolarAngleAxis dataKey="asse" tick={{ fill: "#555", fontSize: 11 }} />
+          <PolarGrid stroke="rgba(244, 236, 226, 0.22)" />
+          <PolarAngleAxis dataKey="asse" tick={{ fill: "#e7d3a3", fontSize: 12 }} />
           <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-          <Radar dataKey="valore" stroke="#6d1b2f" fill="#6d1b2f" fillOpacity={0.35} />
+          <Radar dataKey="valore" stroke="#e7d3a3" fill="#e7d3a3" fillOpacity={0.28} />
         </RadarChart>
       </ResponsiveContainer>
       <p className="caption">
         Profilo chimico normalizzato sui range tipici del dataset (0-100%),
-        non valori assoluti — utile per confrontare la "forma" di vini diversi.
+        non valori assoluti: utile per confrontare la "forma" di vini diversi.
       </p>
     </div>
   );

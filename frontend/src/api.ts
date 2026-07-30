@@ -80,3 +80,18 @@ export const askSommelier = (question: string, wineId: number | null) =>
   api
     .post<SommelierResponse>("/api/sommelier", { question, wine_id: wineId })
     .then((res) => res.data);
+
+export interface PackagingItem {
+  id: number;
+  name: string;
+  type: "red" | "white";
+  quality: number;
+  price_eur: number | null;
+  style: "Moderno" | "Classico" | "Young" | "Elegante";
+  bottle_format: string;
+  cap_type: string;
+  label_material: string;
+}
+
+export const fetchPackaging = () =>
+  api.get<PackagingItem[]>("/api/packaging").then((res) => res.data);
