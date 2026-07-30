@@ -8,6 +8,7 @@ onesta' sull'abbinamento nel prompt del sommelier) restano identiche a
 quelle validate nella versione Streamlit.
 """
 import os
+import re
 import logging
 from contextlib import asynccontextmanager
 
@@ -31,9 +32,30 @@ FEATURE_ORDER = [
 ]
 
 SYSTEM_PROMPT = (
-    "Sei un sommelier esperto e professionale. Rispondi in "
-    "italiano in modo elegante, citando esame visivo, "
-    "olfattivo e gustativo quando pertinente.\n\n"
+    "Sei un sommelier esperto che parla con un collega o un cliente "
+    "curioso. Rispondi in italiano dandogli del 'tu', in modo diretto e "
+    "amichevole ma competente.\n\n"
+    "TONO: niente formule di cortesia pompose ('Gentile ospite', 'Resto "
+    "in attesa', 'La ringrazio per il contatto'). Niente linguaggio "
+    "cerimonioso da lettera formale. Vai dritto al punto come farebbe un "
+    "sommelier al banco: concreto, sicuro, senza giri di parole.\n\n"
+    "LUNGHEZZA: massimo 2-3 frasi. Se la domanda e' vaga o mancano "
+    "informazioni, NON scrivere un paragrafo per spiegarlo: chiedi in "
+    "UNA frase cosa ti serve. Esempio di risposta corretta a una domanda "
+    "poco chiara: 'Non ho capito quale piatto o quale vino ti interessa. "
+    "Dimmi cosa stai mangiando o quale bottiglia hai in mente e ti do "
+    "subito un consiglio.'\n\n"
+    "TERMINOLOGIA: usa il gergo tecnico (esame visivo, olfattivo, "
+    "gustativo, contrapposizione, concordanza) solo quando aggiunge "
+    "davvero qualcosa alla risposta, mai come formula di rito.\n\n"
+    "RICHIESTE NON COMPRENSIBILI: verifica sempre che il messaggio sia "
+    "una domanda sensata su vino, abbinamenti o degustazione. Se contiene "
+    "lettere a caso (es. 'kkkk', 'asdasd'), testo privo di senso o "
+    "argomenti non pertinenti, IGNORA completamente i dati del vino "
+    "selezionato e non produrre alcuna scheda o recensione: rispondi solo "
+    "'Non ho capito la domanda. Chiedimi pure un consiglio o un "
+    "abbinamento per questo vino.' Non inventare una domanda plausibile "
+    "al posto dell'utente.\n\n"
     "IMPORTANTE: se ti viene fornita una 'Conoscenza enologica "
     "di riferimento', basa la risposta su quella invece che "
     "sulla tua memoria. Se l'utente nomina un piatto che non "
@@ -54,11 +76,9 @@ SYSTEM_PROMPT = (
     "plausibili derivate da quei dati). Puoi parlare di vitigni "
     "in termini generali SOLO se la domanda e' generica e non "
     "riguarda un vino specifico del catalogo.\n\n"
-    "BREVITA': rispondi in modo conciso, massimo 4-5 frasi in "
-    "un unico paragrafo scorrevole. Niente tabelle, niente "
-    "elenchi puntati lunghi, niente sezioni multiple con "
-    "titoli, a meno che l'utente non chieda esplicitamente "
-    "un'analisi dettagliata punto per punto.\n\n"
+    "FORMATO: un unico paragrafo scorrevole. Niente tabelle, niente "
+    "elenchi puntati, niente sezioni con titoli, a meno che l'utente non "
+    "chieda esplicitamente un'analisi dettagliata punto per punto.\n\n"
     "ONESTA' SULL'ABBINAMENTO: non forzare un giudizio positivo "
     "solo perche' l'utente ha selezionato quel vino. Valuta "
     "onestamente quanto il vino scelto si adatta al piatto "
@@ -207,6 +227,122 @@ def cheaper_alternative(wine_id: int):
         raise HTTPException(status_code=500, detail="Errore nella ricerca di alternative") from e
 
 
+class PackagingItem(BaseModel):
+    id: int
+    name: str
+    type: str
+    quality: int
+    price_eur: float | None
+    style: str
+    bottle_format: str
+    cap_type: str
+    label_material: str
+
+
+def _packaging_style(name: str, quality: int, price_eur: float | None) -> str:
+    is_riserva = "Riserva" in name
+    if is_riserva and quality >= 7:
+        return "Elegante"
+    if quality <= 4 or (price_eur is not None and price_eur < 13):
+        return "Young"
+    if quality >= 6:
+        return "Classico"
+    return "Moderno"
+
+
+def _bottle_format(name: str, quality: int) -> str:
+    if "Riserva" in name and quality >= 8:
+        return "Magnum 1.5L"
+    if quality <= 4:
+        return "Mignon 375ml"
+    return "Standard 750ml"
+
+
+def _cap_type(wine_type: str, quality: int) -> str:
+    if wine_type == "red" or quality >= 7:
+        return "Tappo in sughero naturale"
+    return "Tappo a vite"
+
+
+def _label_material(style: str) -> str:
+    return {
+        "Elegante": "Carta pergamena con rilievo a caldo oro",
+        "Classico": "Carta opaca con bordo inciso",
+        "Moderno": "Carta patinata minimal",
+        "Young": "Etichetta adesiva colorata",
+    }[style]
+
+
+@app.get("/api/packaging", response_model=list[PackagingItem])
+def get_packaging():
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT id, name, type, quality, price_eur FROM wines")
+            rows = cursor.fetchall()
+            cursor.close()
+        result = []
+        for w in rows:
+            style = _packaging_style(w["name"], w["quality"], w["price_eur"])
+            result.append({
+                "id": w["id"],
+                "name": w["name"],
+                "type": w["type"],
+                "quality": w["quality"],
+                "price_eur": w["price_eur"],
+                "style": style,
+                "bottle_format": _bottle_format(w["name"], w["quality"]),
+                "cap_type": _cap_type(w["type"], w["quality"]),
+                "label_material": _label_material(style),
+            })
+        return result
+    except Exception as e:
+        logger.exception("Errore nel caricamento del packaging")
+        raise HTTPException(status_code=500, detail="Errore nel caricamento del packaging") from e
+
+
+
+NONSENSE_REPLY = (
+    "Non ho capito la domanda. Chiedimi pure un consiglio o un abbinamento "
+    "per questo vino."
+)
+
+_WORD_RE = re.compile(r"[a-zàèéìòùáíóúäëïöü]{2,}", re.IGNORECASE)
+_VOWEL_RE = re.compile(r"[aeiouàèéìòùáíóúäëïöü]", re.IGNORECASE)
+
+
+def is_meaningful_question(text: str) -> bool:
+    """Filtro anti-gibberish: blocca 'kkkk', stringhe troppo corte o senza
+    parole plausibili PRIMA di chiamare l'LLM.
+
+    Senza questo controllo il modello, avendo in contesto i dati del vino
+    selezionato, tende a "riempire il vuoto" generando comunque una scheda
+    di degustazione anche quando l'utente non ha chiesto nulla di sensato.
+    Non e' un'analisi linguistica completa (per quella servirebbe un
+    modello), ma intercetta i casi piu' evidenti a costo zero.
+    """
+    clean = text.strip()
+    if len(clean) < 8:
+        return False
+
+    compact = re.sub(r"\s+", "", clean)
+    # Un solo carattere ripetuto: "kkkkkkkk", "aaaaaaaa".
+    if len(set(compact.lower())) <= 2:
+        return False
+
+    words = _WORD_RE.findall(clean)
+    if len(words) < 2:
+        return False
+
+    # Parole plausibili: contengono almeno una vocale e non sono una sola
+    # lettera ripetuta.
+    plausible = [
+        w for w in words
+        if _VOWEL_RE.search(w) and len(set(w.lower())) > 1
+    ]
+    return len(plausible) >= 2
+
+
 class SommelierRequest(BaseModel):
     question: str
     wine_id: int | None = None
@@ -220,6 +356,12 @@ class SommelierResponse(BaseModel):
 
 @app.post("/api/sommelier", response_model=SommelierResponse)
 def ask_sommelier(payload: SommelierRequest):
+    # Guardia anti-gibberish: si risponde senza consumare una chiamata LLM
+    # e senza mai passare al modello il contesto del vino, cosi' non puo'
+    # generare una scheda di degustazione "a compensazione".
+    if not is_meaningful_question(payload.question):
+        return {"answer": NONSENSE_REPLY, "demo_mode": False, "sources": []}
+
     api_key = os.getenv("OPENROUTER_API_KEY", "")
     model_name = os.getenv("LLM_MODEL", "meta-llama/llama-3.1-8b-instruct")
 
