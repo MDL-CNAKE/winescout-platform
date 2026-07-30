@@ -11,16 +11,27 @@ concordanza:
     piccantezza e le cucine speziate/agrodolci;
   - vini leggeri con piatti semplici, vini strutturati con piatti saporiti.
 
-Distinzione enologica chiave (metodo AIS): un vino AMABILE (zucchero residuo
-moderato, ~10-30 g/L) non e' un vino DOLCE da dessert (~30+ g/L). Sono due
-categorie di abbinamento diverse e vengono trattate separatamente.
+Distinzione enologica chiave: un vino AMABILE non e' un vino DOLCE da
+dessert. Sono due categorie di abbinamento diverse e vengono trattate
+separatamente. Le soglie non sono scelte a piacere ma seguono il Reg. UE
+2019/33 tramite src/wine_style.py, lo stesso modulo usato da src/naming.py:
+cosi' un vino chiamato "Abboccato" nel catalogo non viene abbinato come se
+fosse un passito.
 
 Ogni regola include esempi concreti di piatti reali (cucina italiana e non)
 per rendere il suggerimento immediatamente utile a un ristoratore. Le regole
 sono una formalizzazione originale di principi enologici di dominio pubblico,
 non riproducono testo protetto da copyright di terzi.
 """
+import os
+import sys
+
 import pandas as pd
+
+# Vedi nota in src/naming.py: lo script gira sia direttamente sia importato.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.wine_style import sweetness_category
 
 CSV = "data/wine_quality_merged.csv"
 OUT = "db/migration/V5__add_food_pairing.sql"
@@ -34,14 +45,16 @@ def pairing_for(row: pd.Series) -> str:
     acidity = row["fixed_acidity"] if "fixed_acidity" in row else row["fixed acidity"]
     is_red = row["type"] == "red"
 
-    # 1. Vino DOLCE vero (passito/muffato, ~30+ g/L) -> concordanza con i
-    #    dolci o contrasto con erborinati importanti.
-    if sugar >= 30:
+    sweetness = sweetness_category(sugar, acidity)
+
+    # 1. Vino DOLCE vero (oltre 45 g/L: passiti, muffati, vendemmie tardive)
+    #    -> concordanza con i dolci o contrasto con erborinati importanti.
+    if sweetness == "dolce":
         return "Dolci da dessert (tiramisu, cantucci, panettone) e formaggi erborinati (gorgonzola, roquefort)"
 
-    # 2. Vino ABBOCCATO/AMABILE (~10-30 g/L): morbido ma non dolce. La
-    #    morbidezza contrasta piccantezza e note agrodolci.
-    if sugar >= 10:
+    # 2. Vino AMABILE (12-45 g/L): morbido ma non da dessert. La morbidezza
+    #    contrasta piccantezza e note agrodolci.
+    if sweetness == "amabile":
         return "Cucina speziata e agrodolce (curry, cucina thai, anatra all'arancia), formaggi di media stagionatura"
 
     # 3. Rossi corposi e alcolici -> piatti strutturati e grassi.

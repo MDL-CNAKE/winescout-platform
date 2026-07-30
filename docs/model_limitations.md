@@ -116,6 +116,116 @@ sensazioni. Un'estensione futura sarebbe ampliare la knowledge base con
 schede sensoriali di cucine diverse, redatte con il contributo di persone che
 le conoscono direttamente.
 
+## Granularità insufficiente delle regole di abbinamento
+
+### Il problema individuato
+
+Sfogliando il catalogo emerge che decine di vini consecutivi propongono lo
+stesso identico abbinamento ("Tagliatelle al ragù, tagliere di salumi, pollo
+arrosto, pecorino semi-stagionato"). Non è un errore di implementazione ma
+un limite strutturale, dovuto a due cause che si sommano:
+
+1. **Poche fasce, molti vini.** `src/pairing.py` classifica 6497 vini in
+   sole 7 fasce (dolce, amabile, rosso corposo, rosso leggero, bianco acido,
+   bianco corposo, bianco leggero). In media oltre 900 vini condividono la
+   stessa stringa: la ripetizione è matematicamente inevitabile.
+2. **Ordinamento sequenziale del dataset.** Il CSV UCI elenca prima tutti i
+   rossi e poi tutti i bianchi, e all'interno di ciascun blocco i campioni
+   sono spesso raggruppati per lotti analitici con profili chimici simili. I
+   primi record del catalogo cadono quindi quasi tutti nella stessa fascia,
+   rendendo la ripetizione immediatamente visibile.
+
+### Perché è rilevante
+
+Un sistema a regole con poche classi produce output *corretti* ma poco
+*informativi*: se l'abbinamento è identico per un vino su sette, smette di
+essere un consiglio e diventa rumore. È il limite tipico dei sistemi
+rule-based rispetto a un modello appreso dai dati — con il vantaggio, però,
+di essere ispezionabile e giustificabile riga per riga, cosa che una
+raccomandazione appresa non offrirebbe.
+
+### Mitigazioni adottate
+
+1. **Rotazione del piatto mostrato.** Ogni fascia contiene già 4 piatti
+   diversi: nelle card il piatto visualizzato viene scelto in modo
+   deterministico a partire dall'id del vino, così referenze adiacenti non
+   ripetono la stessa dicitura. La scheda completa resta visibile nella
+   pagina del vino.
+2. **Ordine del catalogo non sequenziale.** Il catalogo non rispetta più
+   l'ordine di inserimento del CSV, che accorpava vini simili: l'utente vede
+   affiancate tipologie diverse.
+
+### Limite residuo
+
+Le mitigazioni agiscono sulla *presentazione*, non sulla granularità delle
+regole: due vini della stessa fascia restano indistinguibili sul piano
+dell'abbinamento. Un'estensione futura sarebbe introdurre sotto-regole basate
+su parametri finora inutilizzati (pH, acidità volatile, solfati) per
+distinguere, ad esempio, un rosso leggero molto acido — adatto a piatti più
+grassi — da uno più morbido. Questo richiede rigenerare la migrazione V5.
+
+## Soglie di dolcezza arbitrarie nei descrittori (corretto)
+
+### Il problema individuato
+
+La prima versione di `src/naming.py` classificava la dolcezza con soglie
+scelte a intuito — secco ≤ 2 g/L, dolce ≥ 10 g/L — e combinava liberamente
+il descrittore di corpo con quello di dolcezza. Il risultato erano nomi come
+**"Bianco Corposo Dolce"**, prodotti 39 volte, che non appartengono al
+lessico enologico: "corposo" è vocabolario da vino secco, mentre per un
+passito o un muffato si parla di concentrazione, non di corpo.
+
+Il difetto vero non era la combinazione, era la soglia: con 10 g/L come
+limite del "dolce", venivano etichettati come dolci 1222 vini che dolci non
+sono.
+
+### La correzione
+
+Le soglie ora seguono il **Regolamento (UE) 2019/33, Allegato III**, che
+classifica i vini fermi per zucchero residuo prevedendo una correzione per
+l'acidità — a parità di zucchero, un vino più acido è percepito più secco:
+
+    secco      ≤ 4 g/L, oppure ≤ 9 g/L se acidità ≥ zucchero − 2
+    abboccato  ≤ 12 g/L, oppure ≤ 18 g/L se acidità ≥ zucchero − 10
+    amabile    12 – 45 g/L
+    dolce      > 45 g/L
+
+Applicate al dataset, la distribuzione cambia radicalmente:
+
+| Categoria | N. vini | % |
+|---|---:|---:|
+| secco | 5047 | 77,7% |
+| abboccato | 1285 | 19,8% |
+| amabile | 164 | 2,5% |
+| dolce | 1 | 0,02% |
+
+Un solo vino su 6497 è realmente dolce (65,8 g/L). Gli incroci problematici
+scompaiono: "corposo + dolce" passa da 39 casi a **zero**.
+
+Le soglie vivono ora in `src/wine_style.py`, condiviso da `naming.py` e
+`pairing.py`: un vino non può più essere chiamato "Abboccato" dal generatore
+di nomi e abbinato come passito da quello degli abbinamenti.
+
+### Effetto collaterale gestito
+
+Con le soglie corrette il 78% del catalogo risulta secco: esplicitarlo nel
+nome avrebbe reso metà dei vini omonimi ("Rosso Equilibrato Secco") senza
+aggiungere informazione. Si è quindi adottato il registro enologico reale,
+dove **"secco" è la condizione implicita e non si menziona** (nessuno chiama
+un Chianti "Chianti secco"): si nomina solo l'eccezione. I vini secchi
+portano al suo posto un descrittore di freschezza derivato dal pH — fresco
+(≤ 3,15), armonico, morbido (≥ 3,40) — che usa una colonna del dataset fino
+ad allora inutilizzata nel naming.
+
+### Limite residuo
+
+Il dataset riporta `fixed_acidity` (acido tartarico in g/dm³), mentre la
+norma UE fa riferimento all'**acidità totale**. L'acidità fissa ne è la
+componente prevalente ma non coincide: la correzione per l'acidità è quindi
+applicata su un proxy, e in una manciata di casi al confine fra due
+categorie potrebbe assegnare la classe adiacente. La scelta è dichiarata
+perché il dato esatto non è ricavabile dal dataset.
+
 ## Assenza dell'informazione sul vitigno
 
 Il dataset UCI Wine Quality (rossi e bianchi "Vinho Verde" portoghesi) non

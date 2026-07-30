@@ -15,15 +15,24 @@ def wine(type_, alcohol, sugar, acidity=6.0):
     })
 
 
-def test_true_dessert_wine_sugar_above_30():
-    result = pairing_for(wine("white", alcohol=11, sugar=35))
+def test_true_dessert_wine_above_eu_sweet_threshold():
+    """Dolce da dessert solo oltre i 45 g/L (Reg. UE 2019/33)."""
+    result = pairing_for(wine("white", alcohol=11, sugar=50))
     assert "dessert" in result.lower() or "dolci" in result.lower()
 
 
-def test_amabile_wine_sugar_between_10_and_30_is_not_dessert_pairing():
-    result = pairing_for(wine("white", alcohol=11, sugar=15))
+def test_amabile_wine_is_not_dessert_pairing():
+    result = pairing_for(wine("white", alcohol=11, sugar=20))
     assert "dessert" not in result.lower()
     assert "speziat" in result.lower() or "agrodolce" in result.lower()
+
+
+def test_abboccato_non_e_trattato_come_dolce():
+    """Con le vecchie soglie un vino a 15 g/L finiva fra i dolci da
+    dessert; con il criterio UE resta un abboccato e segue le regole di
+    struttura."""
+    result = pairing_for(wine("white", alcohol=11, sugar=11, acidity=5.0))
+    assert "dessert" not in result.lower()
 
 
 def test_red_full_bodied_gets_structured_dish():

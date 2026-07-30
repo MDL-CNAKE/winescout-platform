@@ -5,39 +5,81 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import pandas as pd
-from src.naming import alcohol_descriptor, sugar_descriptor, build_name
+from src.naming import build_name, second_descriptor
+from src.wine_style import acidity_category, body_category, sweetness_category
 
 
-def test_alcohol_descriptor_thresholds():
-    assert alcohol_descriptor(12.0) == "Corposo"
-    assert alcohol_descriptor(15.0) == "Corposo"
-    assert alcohol_descriptor(9.5) == "Leggero"
-    assert alcohol_descriptor(8.0) == "Leggero"
-    assert alcohol_descriptor(10.5) == "Equilibrato"
+def test_body_thresholds():
+    assert body_category(12.0) == "corposo"
+    assert body_category(15.0) == "corposo"
+    assert body_category(9.5) == "leggero"
+    assert body_category(8.0) == "leggero"
+    assert body_category(10.5) == "equilibrato"
 
 
-def test_sugar_descriptor_thresholds():
-    assert sugar_descriptor(10.0) == "Dolce"
-    assert sugar_descriptor(50.0) == "Dolce"
-    assert sugar_descriptor(2.0) == "Secco"
-    assert sugar_descriptor(0.5) == "Secco"
-    assert sugar_descriptor(5.0) == "Amabile"
+def test_sweetness_follows_eu_thresholds():
+    # Sotto i 4 g/L e' secco a prescindere dall'acidita'.
+    assert sweetness_category(3.0, acidity=5.0) == "secco"
+    # Fra 4 e 9 g/L resta secco solo se l'acidita' compensa.
+    assert sweetness_category(8.0, acidity=7.0) == "secco"
+    assert sweetness_category(8.0, acidity=4.0) == "abboccato"
+    # Oltre i 12 g/L (senza compensazione) si entra fra gli amabili.
+    assert sweetness_category(20.0, acidity=5.0) == "amabile"
+    # Dolce vero solo oltre i 45 g/L.
+    assert sweetness_category(50.0, acidity=6.0) == "dolce"
+    assert sweetness_category(44.0, acidity=6.0) == "amabile"
+
+
+def test_acidity_descriptor_from_ph():
+    assert acidity_category(3.0) == "fresco"
+    assert acidity_category(3.5) == "morbido"
+    assert acidity_category(3.3) == "armonico"
+
+
+def test_secco_non_compare_nel_nome():
+    """Un vino secco porta la freschezza, non la dicitura 'Secco'."""
+    assert second_descriptor(sugar=2.0, acidity=6.0, ph=3.0) == "Fresco"
+    assert second_descriptor(sugar=2.0, acidity=6.0, ph=3.5) == "Morbido"
+
+
+def test_non_secco_porta_la_dolcezza():
+    assert second_descriptor(sugar=20.0, acidity=5.0, ph=3.3) == "Amabile"
+    assert second_descriptor(sugar=50.0, acidity=6.0, ph=3.3) == "Dolce"
 
 
 def test_build_name_red_riserva():
-    row = pd.Series({"type": "red", "alcohol": 13.0, "residual_sugar": 1.5, "quality": 8})
-    name = build_name(row, wine_id=42)
-    assert name == "Rosso Corposo Secco Riserva - Lotto #0042"
+    row = pd.Series({
+        "type": "red", "alcohol": 13.0, "residual_sugar": 1.5,
+        "fixed_acidity": 7.0, "ph": 3.0, "quality": 8,
+    })
+    assert build_name(row, wine_id=42) == "Rosso Corposo Fresco Riserva - Lotto #0042"
 
 
 def test_build_name_white_no_riserva_below_quality_7():
-    row = pd.Series({"type": "white", "alcohol": 10.0, "residual_sugar": 3.0, "quality": 6})
+    row = pd.Series({
+        "type": "white", "alcohol": 10.0, "residual_sugar": 20.0,
+        "fixed_acidity": 5.0, "ph": 3.3, "quality": 6,
+    })
     name = build_name(row, wine_id=7)
     assert name == "Bianco Equilibrato Amabile - Lotto #0007"
     assert "Riserva" not in name
 
 
 def test_build_name_id_is_zero_padded():
-    row = pd.Series({"type": "red", "alcohol": 10.0, "residual_sugar": 3.0, "quality": 5})
-    name = build_name(row, wine_id=8)
-    assert "#0008" in name
+    row = pd.Series({
+        "type": "red", "alcohol": 10.0, "residual_sugar": 3.0,
+        "fixed_acidity": 6.0, "ph": 3.3, "quality": 5,
+    })
+    assert "#0008" in build_name(row, wine_id=8)
+
+
+def test_corposo_dolce_non_e_piu_producibile_con_dati_del_dataset():
+    """Nel dataset lo zucchero massimo e' 65,8 g/L ma i vini oltre i 45 g/L
+    sono uno solo: la combinazione 'Corposo Dolce', che con le vecchie
+    soglie arbitrarie compariva 39 volte, resta possibile solo per vini
+    realmente da dessert. Vedi docs/model_limitations.md."""
+    row = pd.Series({
+        "type": "white", "alcohol": 13.0, "residual_sugar": 12.0,
+        "fixed_acidity": 6.0, "ph": 3.2, "quality": 6,
+    })
+    assert "Dolce" not in build_name(row, wine_id=1)

@@ -6,38 +6,57 @@ in una demo generiamo nomi descrittivi derivati direttamente dalle
 caratteristiche chimiche del vino (non nomi di fantasia scollegati dai dati,
 e non nomi che imitano marchi/cantine reali esistenti). Il criterio e'
 dichiarato esplicitamente nella dichiarazione etica del progetto.
+
+Struttura del nome: <tipo> <corpo> <secondo descrittore> [Riserva] - Lotto #id
+
+Il secondo descrittore segue il registro enologico reale:
+
+  - "Secco" NON compare mai nel nome. E' la condizione implicita di un vino
+    da tavola (nessuno chiama un Chianti "Chianti secco") e nel dataset
+    riguarda il 78% dei vini: esplicitarlo renderebbe meta' del catalogo
+    omonimo senza aggiungere informazione. Al suo posto i vini secchi
+    portano la sensazione di freschezza derivata dal pH.
+  - Abboccato, Amabile e Dolce compaiono perche' sono l'eccezione, ed e'
+    quella che va segnalata. Le soglie sono quelle del Reg. UE 2019/33
+    (vedi src/wine_style.py), non valori scelti a piacere: con soglie
+    arbitrarie il generatore produceva combinazioni come "Corposo Dolce",
+    che non appartengono al lessico enologico.
 """
+import os
+import sys
+
 import pandas as pd
+
+# Eseguito sia come script ("python src/naming.py", come da README) sia come
+# modulo importato dai test ("from src.naming import ..."): nel primo caso
+# sul path finisce src/, non la radice del progetto, quindi la si aggiunge.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.wine_style import acidity_category, body_category, sweetness_category
 
 CSV = "data/wine_quality_merged.csv"
 OUT = "db/migration/V4__add_wine_names.sql"
 BATCH = 500
 
 
-def alcohol_descriptor(alcohol: float) -> str:
-    """Descrittore principale in base al grado alcolico."""
-    if alcohol >= 12.0:
-        return "Corposo"
-    if alcohol <= 9.5:
-        return "Leggero"
-    return "Equilibrato"
-
-
-def sugar_descriptor(sugar: float) -> str:
-    """Descrittore secondario in base allo zucchero residuo."""
-    if sugar >= 10.0:
-        return "Dolce"
-    if sugar <= 2.0:
-        return "Secco"
-    return "Amabile"
+def second_descriptor(sugar: float, acidity: float, ph: float) -> str:
+    """Dolcezza se il vino non e' secco, altrimenti freschezza."""
+    sweetness = sweetness_category(sugar, acidity)
+    if sweetness != "secco":
+        return sweetness.capitalize()
+    return acidity_category(ph).capitalize()
 
 
 def build_name(row: pd.Series, wine_id: int) -> str:
     base = "Rosso" if row["type"] == "red" else "Bianco"
-    desc1 = alcohol_descriptor(row["alcohol"])
-    desc2 = sugar_descriptor(row["residual sugar"] if "residual sugar" in row else row["residual_sugar"])
+    sugar = row["residual_sugar"] if "residual_sugar" in row else row["residual sugar"]
+    acidity = row["fixed_acidity"] if "fixed_acidity" in row else row["fixed acidity"]
+    ph = row["ph"] if "ph" in row else row["pH"]
+
+    corpo = body_category(row["alcohol"]).capitalize()
+    desc = second_descriptor(sugar, acidity, ph)
     riserva = " Riserva" if row["quality"] >= 7 else ""
-    return f"{base} {desc1} {desc2}{riserva} - Lotto #{wine_id:04d}"
+    return f"{base} {corpo} {desc}{riserva} - Lotto #{wine_id:04d}"
 
 
 def main() -> None:
@@ -54,7 +73,8 @@ def main() -> None:
         f.write(
             "-- Nomi descrittivi generati da src/naming.py in base alle "
             "caratteristiche chimiche reali del vino (non nomi di fantasia "
-            "scollegati dai dati, non marchi reali). Vedi dichiarazione etica.\n"
+            "scollegati dai dati, non marchi reali). Soglie di dolcezza "
+            "secondo Reg. UE 2019/33. Vedi dichiarazione etica.\n"
         )
         f.write("ALTER TABLE wines ADD COLUMN name VARCHAR(80) NULL;\n\n")
 
