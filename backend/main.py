@@ -17,6 +17,7 @@ import pandas as pd
 import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 
 from src.database.connection import DatabaseConnection
@@ -48,6 +49,15 @@ SYSTEM_PROMPT = (
     "TERMINOLOGIA: usa il gergo tecnico (esame visivo, olfattivo, "
     "gustativo, contrapposizione, concordanza) solo quando aggiunge "
     "davvero qualcosa alla risposta, mai come formula di rito.\n\n"
+    "ANCORAGGIO AI DATI: quando parli di un vino del catalogo, giustifica "
+    "il consiglio citando UN dato reale fra quelli che ti sono stati "
+    "forniti (gradazione alcolica, pH, acidita', zucchero residuo, "
+    "solfati, qualita'), integrato nella frase e non come elenco. Cita un "
+    "solo dato, quello piu' pertinente alla domanda: l'obiettivo e' "
+    "ancorare il consiglio, non fare una scheda analitica. Non menzionare "
+    "MAI caratteristiche assenti dai dati: il dataset non contiene "
+    "tannini, annata, terroir, affinamento, note aromatiche o vitigno, "
+    "quindi non puoi citarli come se li conoscessi.\n\n"
     "RICHIESTE NON COMPRENSIBILI: verifica sempre che il messaggio sia "
     "una domanda sensata su vino, abbinamenti o degustazione. Se contiene "
     "lettere a caso (es. 'kkkk', 'asdasd'), testo privo di senso o "
@@ -116,6 +126,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Compressione delle risposte: /api/wines restituisce 6497 record con tutte
+# le colonne, circa 2 MB di JSON. E' testo molto ripetitivo (nomi di campo e
+# stringhe di abbinamento identiche su migliaia di righe), quindi comprime
+# di circa dieci volte. La soglia evita di sprecare CPU sulle risposte
+# piccole, dove il guadagno sarebbe nullo.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 
 @app.get("/api/health")
 def health():
@@ -155,6 +172,190 @@ def get_wines():
     except Exception as e:
         logger.exception("Errore nel caricamento del catalogo")
         raise HTTPException(status_code=500, detail="Errore nel caricamento del catalogo") from e
+
+
+class WineSummary(BaseModel):
+    id: int
+    name: str
+    type: str
+
+
+# ATTENZIONE all'ordine: questa rotta deve precedere /api/wines/{wine_id},
+# altrimenti FastAPI proverebbe a interpretare "summary" come intero e
+# risponderebbe 422.
+@app.get("/api/wines/summary", response_model=list[WineSummary])
+def get_wines_summary():
+    """Elenco leggero (id, nome, tipo) per le liste di navigazione.
+
+    La sidebar della scheda vino mostra solo i nomi: scaricare anche le
+    undici colonne chimiche di 6497 record sarebbe sproporzionato.
+    """
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT id, name, type FROM wines")
+            rows = cursor.fetchall()
+            cursor.close()
+            return rows
+    except Exception as e:
+        logger.exception("Errore nel caricamento dell'elenco vini")
+        raise HTTPException(status_code=500, detail="Errore nel caricamento dell'elenco") from e
+
+
+class WineFacets(BaseModel):
+    """Estremi reali del catalogo, per tarare i cursori dei filtri sui dati
+    invece che su valori inventati nel frontend."""
+    alcohol: tuple[float, float]
+    residual_sugar: tuple[float, float]
+    fixed_acidity: tuple[float, float]
+    price_eur: tuple[float, float]
+    quality: tuple[int, int]
+
+
+@app.get("/api/wines/facets", response_model=WineFacets)
+def get_wine_facets():
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT MIN(alcohol), MAX(alcohol), MIN(residual_sugar), "
+                "MAX(residual_sugar), MIN(fixed_acidity), MAX(fixed_acidity), "
+                "MIN(price_eur), MAX(price_eur), MIN(quality), MAX(quality) "
+                "FROM wines"
+            )
+            r = cursor.fetchone()
+            cursor.close()
+        return {
+            "alcohol": (float(r[0]), float(r[1])),
+            "residual_sugar": (float(r[2]), float(r[3])),
+            "fixed_acidity": (float(r[4]), float(r[5])),
+            "price_eur": (float(r[6]), float(r[7])),
+            "quality": (int(r[8]), int(r[9])),
+        }
+    except Exception as e:
+        logger.exception("Errore nel calcolo degli intervalli")
+        raise HTTPException(status_code=500, detail="Errore nel calcolo degli intervalli") from e
+
+
+class WineSearchResult(BaseModel):
+    items: list[Wine]
+    total: int
+    page: int
+    page_size: int
+
+
+# Ordinamenti ammessi: la clausola ORDER BY non puo' essere parametrizzata,
+# quindi si accetta solo una chiave da questa mappa. Mai concatenare in SQL
+# una stringa che arriva dal client.
+SORT_OPTIONS = {
+    "price_asc": "price_eur ASC",
+    "price_desc": "price_eur DESC",
+    "quality_desc": "quality DESC, price_eur ASC",
+    "quality_asc": "quality ASC, price_eur ASC",
+    "alcohol_desc": "alcohol DESC",
+    "name_asc": "name ASC",
+}
+
+MAX_PAGE_SIZE = 60
+
+
+@app.get("/api/wines/search", response_model=WineSearchResult)
+def search_wines(
+    type: str | None = None,
+    min_quality: int | None = None,
+    min_alcohol: float | None = None,
+    max_alcohol: float | None = None,
+    min_sugar: float | None = None,
+    max_sugar: float | None = None,
+    min_acidity: float | None = None,
+    max_acidity: float | None = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
+    sort: str = "quality_desc",
+    page: int = 1,
+    page_size: int = 24,
+):
+    """Catalogo filtrato, ordinato e paginato.
+
+    Filtri e ordinamento avvengono in SQL, non nel browser: con 6497 record
+    scaricare tutto per mostrarne 24 sarebbe uno spreco, e la griglia della
+    home ne mostra comunque una pagina alla volta.
+    """
+    if sort not in SORT_OPTIONS:
+        raise HTTPException(status_code=400, detail=f"Ordinamento non valido: {sort}")
+    if type is not None and type not in ("red", "white"):
+        raise HTTPException(status_code=400, detail="Tipo non valido: usare 'red' o 'white'")
+
+    page = max(1, page)
+    page_size = max(1, min(page_size, MAX_PAGE_SIZE))
+
+    conditions: list[str] = []
+    params: list = []
+
+    def add(clause: str, value) -> None:
+        if value is not None:
+            conditions.append(clause)
+            params.append(value)
+
+    add("type = %s", type)
+    add("quality >= %s", min_quality)
+    add("alcohol >= %s", min_alcohol)
+    add("alcohol <= %s", max_alcohol)
+    add("residual_sugar >= %s", min_sugar)
+    add("residual_sugar <= %s", max_sugar)
+    add("fixed_acidity >= %s", min_acidity)
+    add("fixed_acidity <= %s", max_acidity)
+    add("price_eur >= %s", min_price)
+    add("price_eur <= %s", max_price)
+
+    where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+
+            cursor.execute(f"SELECT COUNT(*) AS n FROM wines {where}", params)
+            total = cursor.fetchone()["n"]
+
+            cursor.execute(
+                "SELECT id, name, type, alcohol, ph, residual_sugar, "
+                "fixed_acidity, volatile_acidity, chlorides, sulphates, quality, "
+                f"price_eur, margin_pct, food_pairing FROM wines {where} "
+                f"ORDER BY {SORT_OPTIONS[sort]}, id ASC LIMIT %s OFFSET %s",
+                params + [page_size, (page - 1) * page_size],
+            )
+            items = cursor.fetchall()
+            cursor.close()
+
+        return {"items": items, "total": total, "page": page, "page_size": page_size}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Errore nella ricerca del catalogo")
+        raise HTTPException(status_code=500, detail="Errore nella ricerca del catalogo") from e
+
+
+@app.get("/api/wines/{wine_id}", response_model=Wine)
+def get_wine(wine_id: int):
+    """Singolo vino: evita di scaricare l'intero catalogo per usarne uno."""
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT id, name, type, alcohol, ph, residual_sugar, "
+                "fixed_acidity, volatile_acidity, chlorides, sulphates, quality, "
+                "price_eur, margin_pct, food_pairing FROM wines WHERE id = %s",
+                (wine_id,),
+            )
+            row = cursor.fetchone()
+            cursor.close()
+    except Exception as e:
+        logger.exception("Errore nel caricamento del vino")
+        raise HTTPException(status_code=500, detail="Errore nel caricamento del vino") from e
+
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"Vino con id={wine_id} non trovato")
+    return row
 
 
 class PredictionInput(BaseModel):
@@ -341,6 +542,161 @@ def is_meaningful_question(text: str) -> bool:
         if _VOWEL_RE.search(w) and len(set(w.lower())) > 1
     ]
     return len(plausible) >= 2
+
+
+@app.get("/api/packaging/{wine_id}", response_model=PackagingItem)
+def get_packaging_item(wine_id: int):
+    """Scheda packaging di un singolo vino, senza scaricare l'intera lista."""
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT id, name, type, quality, price_eur FROM wines WHERE id = %s",
+                (wine_id,),
+            )
+            w = cursor.fetchone()
+            cursor.close()
+    except Exception as e:
+        logger.exception("Errore nel caricamento del packaging")
+        raise HTTPException(status_code=500, detail="Errore nel caricamento del packaging") from e
+
+    if w is None:
+        raise HTTPException(status_code=404, detail=f"Vino con id={wine_id} non trovato")
+
+    style = _packaging_style(w["name"], w["quality"], w["price_eur"])
+    return {
+        "id": w["id"],
+        "name": w["name"],
+        "type": w["type"],
+        "quality": w["quality"],
+        "price_eur": w["price_eur"],
+        "style": style,
+        "bottle_format": _bottle_format(w["name"], w["quality"]),
+        "cap_type": _cap_type(w["type"], w["quality"]),
+        "label_material": _label_material(style),
+    }
+
+
+# --------------------------------------------------------------------------
+# Selezioni di lavoro condivise
+#
+# Non c'e' autenticazione: l'applicazione appartiene a una sola cantina e chi
+# la usa si dichiara scegliendo il proprio nome dall'elenco degli operatori.
+# Le preferenze restano quindi distinte per persona pur vivendo in un'unica
+# tabella condivisa, cosi' un collega vede cosa ha segnato l'altro.
+# --------------------------------------------------------------------------
+
+class Operator(BaseModel):
+    id: int
+    name: str
+
+
+class OperatorCreate(BaseModel):
+    name: str
+
+
+class Favorite(BaseModel):
+    wine_id: int
+    operator_id: int
+    operator_name: str
+
+
+class FavoriteRequest(BaseModel):
+    wine_id: int
+    operator_id: int
+
+
+@app.get("/api/operators", response_model=list[Operator])
+def get_operators():
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT id, name FROM operators ORDER BY name")
+            rows = cursor.fetchall()
+            cursor.close()
+            return rows
+    except Exception as e:
+        logger.exception("Errore nel caricamento degli operatori")
+        raise HTTPException(status_code=500, detail="Errore nel caricamento degli operatori") from e
+
+
+@app.post("/api/operators", response_model=Operator, status_code=201)
+def create_operator(payload: OperatorCreate):
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Il nome non puo' essere vuoto")
+    if len(name) > 60:
+        raise HTTPException(status_code=400, detail="Nome troppo lungo (max 60 caratteri)")
+
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO operators (name) VALUES (%s)", (name,))
+            new_id = cursor.lastrowid
+            conn.commit()
+            cursor.close()
+        return {"id": new_id, "name": name}
+    except Exception as e:
+        # Il vincolo di unicita' sul nome e' la causa piu' probabile.
+        logger.exception("Errore nella creazione dell'operatore")
+        raise HTTPException(status_code=409, detail="Operatore gia' esistente o non valido") from e
+
+
+@app.get("/api/favorites", response_model=list[Favorite])
+def get_favorites():
+    """Tutte le selezioni con il nome di chi le ha fatte.
+
+    Si restituisce l'elenco completo perche' e' piccolo (poche decine di
+    righe per cantina) e serve alla griglia per mostrare su ogni card chi
+    altro ha segnato quel vino.
+    """
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT f.wine_id, f.operator_id, o.name AS operator_name "
+                "FROM favorites f JOIN operators o ON o.id = f.operator_id"
+            )
+            rows = cursor.fetchall()
+            cursor.close()
+            return rows
+    except Exception as e:
+        logger.exception("Errore nel caricamento delle selezioni")
+        raise HTTPException(status_code=500, detail="Errore nel caricamento delle selezioni") from e
+
+
+@app.post("/api/favorites", status_code=204)
+def add_favorite(payload: FavoriteRequest):
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor()
+            # Ripetere l'inserimento non e' un errore: l'operazione e'
+            # idempotente, cosi' un doppio click non genera un 500.
+            cursor.execute(
+                "INSERT IGNORE INTO favorites (wine_id, operator_id) VALUES (%s, %s)",
+                (payload.wine_id, payload.operator_id),
+            )
+            conn.commit()
+            cursor.close()
+    except Exception as e:
+        logger.exception("Errore nel salvataggio della selezione")
+        raise HTTPException(status_code=500, detail="Errore nel salvataggio della selezione") from e
+
+
+@app.delete("/api/favorites", status_code=204)
+def remove_favorite(wine_id: int, operator_id: int):
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "DELETE FROM favorites WHERE wine_id = %s AND operator_id = %s",
+                (wine_id, operator_id),
+            )
+            conn.commit()
+            cursor.close()
+    except Exception as e:
+        logger.exception("Errore nella rimozione della selezione")
+        raise HTTPException(status_code=500, detail="Errore nella rimozione della selezione") from e
 
 
 class SommelierRequest(BaseModel):

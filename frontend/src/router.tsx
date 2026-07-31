@@ -5,9 +5,7 @@
  */
 import { createRootRoute, createRoute, createRouter, Outlet, Link } from "@tanstack/react-router";
 import { Home } from "./routes/Home";
-import { Catalogo } from "./routes/Catalogo";
 import { Predizione } from "./routes/Predizione";
-import { Raccomandazioni } from "./routes/Raccomandazioni";
 import { Packaging } from "./routes/Packaging";
 import { Sommelier } from "./routes/Sommelier";
 import { Vino } from "./routes/Vino";
@@ -24,8 +22,9 @@ const rootRoute = createRootRoute({
         </Link>
 
         <nav>
-          <Link to="/" activeProps={{ className: "active" }}>Home</Link>
-          <Link to="/catalogo" activeProps={{ className: "active" }}>Catalogo Vini</Link>
+          <Link to="/" activeProps={{ className: "active" }}>Catalogo</Link>
+          <Link to="/predizione" activeProps={{ className: "active" }}>Predizione</Link>
+          <Link to="/packaging" activeProps={{ className: "active" }}>Packaging</Link>
           <Link to="/sommelier" activeProps={{ className: "active" }}>Sommelier Virtuale</Link>
         </nav>
       </header>
@@ -50,22 +49,10 @@ const homeRoute = createRoute({
   component: Home,
 });
 
-const catalogoRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/catalogo",
-  component: Catalogo,
-});
-
 const predizioneRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/predizione",
   component: Predizione,
-});
-
-const raccomandazioniRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/raccomandazioni",
-  component: Raccomandazioni,
 });
 
 const packagingRoute = createRoute({
@@ -88,9 +75,7 @@ const sommelierRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
-  catalogoRoute,
   predizioneRoute,
-  raccomandazioniRoute,
   packagingRoute,
   vinoRoute,
   sommelierRoute,

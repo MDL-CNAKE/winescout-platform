@@ -1,5 +1,5 @@
 /**
- * Etichette dei vini derivate dai dati reali.
+ * Etichette derivate (purtroppo) dai dati reali.
  *
  * I nomi in database hanno forma "Rosso Equilibrato Amabile - Lotto #0002":
  * il lotto serve a distinguere referenze altrimenti identiche, ma ripeterlo
@@ -40,16 +40,12 @@ export function sugarDescriptor(sugar: number, acidity: number): string {
 }
 
 /**
- * Un piatto della lista di abbinamento, a rotazione sull'id del vino.
+ * Un piatto della lista di abbinamento, a rotazione sull'id del vino
  *
- * Le regole in src/pairing.py classificano 6497 vini in 7 fasce: mostrare
- * sempre il primo piatto della fascia significherebbe vedere "Tagliatelle al
- * ragu" su decine di card consecutive. Ogni fascia contiene pero' 4 piatti
- * diversi: ruotare sull'id li distribuisce fra referenze adiacenti senza
- * introdurre casualita' (stesso vino, stesso piatto a ogni caricamento).
+ * Le regole in src/pairing.py classificano 6497 vini in 7 fasce
  *
  * E' una mitigazione di presentazione, non risolve la granularita' delle
- * regole: vedi docs/model_limitations.md.
+ * regole: vedi docs/model_limitations.md
  */
 export function mainPairing(wine: Wine): string | null {
   if (!wine.food_pairing) return null;

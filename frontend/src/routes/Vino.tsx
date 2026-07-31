@@ -6,14 +6,15 @@
  * contestuali (predizione, raccomandazioni, packaging, sommelier) che
  * lavorano tutte su QUESTO vino, senza doverlo riselezionare ogni volta.
  */
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
-  fetchWines,
+  fetchWine,
+  fetchWinesSummary,
   fetchRecommendations,
   fetchCheaperAlternatives,
-  fetchPackaging,
+  fetchPackagingItem,
   predictQuality,
   askSommelier,
   type Wine,
@@ -39,8 +40,17 @@ export function Vino() {
   const id = Number(wineId);
   const [tab, setTab] = useState<Tab>("predizione");
 
-  const { data: wines, isLoading } = useQuery({ queryKey: ["wines"], queryFn: fetchWines });
-  const wine = useMemo(() => wines?.find((w) => w.id === id) ?? null, [wines, id]);
+  // Due chiamate distinte invece di scaricare l'intero catalogo: la scheda
+  // ha bisogno di un solo vino, la sidebar solo di nomi.
+  const { data: wine, isLoading, isError } = useQuery({
+    queryKey: ["wine", id],
+    queryFn: () => fetchWine(id),
+    retry: false,
+  });
+  const { data: others } = useQuery({
+    queryKey: ["wines-summary"],
+    queryFn: fetchWinesSummary,
+  });
 
   if (isLoading) {
     return (
@@ -49,7 +59,7 @@ export function Vino() {
       </section>
     );
   }
-  if (!wine) {
+  if (isError || !wine) {
     return (
       <section>
         <EmptyState
@@ -64,11 +74,11 @@ export function Vino() {
     <section className="vino-layout">
       <aside className="vino-sidebar">
         <div className="vino-nav-buttons">
-          <Link to="/catalogo" className="btn-secondary">← Torna al catalogo</Link>
+          <Link to="/" className="btn-secondary">← Torna al catalogo</Link>
         </div>
         <h4 className="vino-sidebar-title">Altri vini</h4>
         <ul className="vino-list">
-          {wines
+          {others
             ?.filter((w) => w.id !== id)
             .slice(0, 40)
             .map((w) => (
@@ -292,8 +302,11 @@ function TabRaccomandazioni({ wineId }: { wineId: number }) {
 }
 
 function TabPackaging({ wineId }: { wineId: number }) {
-  const { data, isLoading } = useQuery({ queryKey: ["packaging"], queryFn: fetchPackaging });
-  const item = data?.find((p) => p.id === wineId);
+  const { data: item, isLoading } = useQuery({
+    queryKey: ["packaging", wineId],
+    queryFn: () => fetchPackagingItem(wineId),
+    retry: false,
+  });
 
   if (isLoading) return <p>Caricamento packaging...</p>;
   if (!item) return <p className="hint">Nessuna scheda packaging per questo vino.</p>;

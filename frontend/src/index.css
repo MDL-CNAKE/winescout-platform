@@ -42,7 +42,8 @@ body {
 /* Header e landing: pannelli scuri, testo chiaro. Il dipinto resta
    leggibile sotto senza essere sbiadito da un velo bianco. */
 .app > header,
-.home-hero {
+.home-hero,
+.home {
   background: rgba(26, 11, 16, 0.55);
   backdrop-filter: blur(8px) saturate(1.1);
   -webkit-backdrop-filter: blur(8px) saturate(1.1);
@@ -53,7 +54,7 @@ body {
 
 /* Pagine operative (catalogo, form, tabelle): pannello chiaro, dove la
    priorità è leggere dati fitti, non l'atmosfera. */
-main > section:not(.home-hero) {
+main > section:not(.home-hero):not(.home) {
   background: rgba(26, 11, 16, 0.72);
   backdrop-filter: blur(8px) saturate(1.1);
   -webkit-backdrop-filter: blur(8px) saturate(1.1);
@@ -424,7 +425,309 @@ textarea, select, input {
   color: #2e7d32;
 }
 
-/* ===== Home ===== */
+/* ===== Home: hero compatto + catalogo in griglia ===== */
+.home-intro {
+  text-align: center;
+  padding: 0.5rem 0 1.75rem;
+  border-bottom: 1px solid rgba(231, 211, 163, 0.25);
+  margin-bottom: 1.5rem;
+}
+main .home-intro .home-claim { font-size: 2.3rem; margin-bottom: 0.6rem; }
+main .home-intro .home-desc { font-size: 0.95rem; }
+
+/* --- Operatore corrente: distingue le selezioni fra colleghi --- */
+.operator-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding-bottom: 1rem;
+}
+.operator-picker label {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+main .operator-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(244, 236, 226, 0.5);
+}
+main .operator-picker select { padding: 0.35rem 0.6rem; font-size: 0.85rem; }
+.operator-add { display: inline-flex; gap: 0.4rem; align-items: center; }
+main .operator-add input { padding: 0.35rem 0.6rem; font-size: 0.85rem; max-width: 160px; }
+main .operator-confirm,
+main .operator-cancel {
+  background: transparent;
+  border: 1px solid rgba(244, 236, 226, 0.28);
+  color: rgba(244, 236, 226, 0.75);
+  border-radius: 6px;
+  padding: 0.32rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+main .operator-confirm:hover:not(:disabled),
+main .operator-cancel:hover:not(:disabled) {
+  border-color: var(--gold-light);
+  color: var(--gold-light);
+  background: transparent;
+  transform: none;
+}
+
+/* Iniziali dei colleghi che hanno segnato lo stesso vino */
+.grid-card-fav-group { display: inline-flex; align-items: center; gap: 0.35rem; }
+.grid-card-others { display: inline-flex; gap: 0.2rem; cursor: help; }
+.grid-card-initial {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(244, 236, 226, 0.75);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(244, 236, 226, 0.18);
+  border-radius: 999px;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Barra filtri --- */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-bottom: 1rem;
+}
+main .filter-toggle,
+main .filter-reset {
+  background: transparent;
+  color: var(--cream);
+  border: 1px solid rgba(244, 236, 226, 0.35);
+  border-radius: 8px;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+main .filter-toggle.open,
+main .filter-toggle:hover:not(:disabled) {
+  border-color: var(--gold-light);
+  color: var(--gold-light);
+  background: transparent;
+  transform: none;
+}
+.filter-badge {
+  background: var(--gold-light);
+  color: #2b1208;
+  border-radius: 999px;
+  padding: 0 0.4rem;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+main .filter-count {
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(244, 236, 226, 0.6);
+}
+.filter-sort {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* --- Pannello filtri --- */
+.filter-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1.5rem;
+  padding: 1.25rem 0 1.5rem;
+  border-top: 1px solid rgba(244, 236, 226, 0.12);
+  border-bottom: 1px solid rgba(244, 236, 226, 0.12);
+  margin-bottom: 1.5rem;
+  align-items: start;
+}
+.filter-group-title {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-bottom: 0.6rem;
+}
+.filter-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+main .filter-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(244, 236, 226, 0.2);
+  color: rgba(244, 236, 226, 0.8);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+main .filter-chip.active {
+  background: var(--gold-light);
+  border-color: var(--gold-light);
+  color: #2b1208;
+  font-weight: 600;
+}
+.filter-range { gap: 0.35rem; margin-bottom: 0.9rem; }
+.filter-range span {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: rgba(244, 236, 226, 0.7);
+}
+.filter-range strong { color: var(--gold-light); }
+main .filter-range input[type="range"] {
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  accent-color: var(--gold-light);
+}
+
+/* --- Griglia --- */
+.wine-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+@media (max-width: 1000px) { .wine-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 760px) { .wine-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .wine-grid { grid-template-columns: 1fr; } }
+
+.grid-card {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(231, 211, 163, 0.18);
+  border-radius: 12px;
+  padding: 1rem 1rem 1.1rem;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.grid-card:hover { border-color: rgba(231, 211, 163, 0.45); transform: translateY(-2px); }
+.grid-card-figure {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 0 0.9rem;
+  background: radial-gradient(ellipse at center, rgba(231, 211, 163, 0.09) 0%, transparent 70%);
+  border-radius: 8px;
+}
+.grid-card-figure svg { filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5)); }
+.grid-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+main .grid-card-lot {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(244, 236, 226, 0.5);
+}
+main .grid-card-fav {
+  background: transparent;
+  border: none;
+  padding: 0.15rem;
+  color: rgba(244, 236, 226, 0.45);
+  line-height: 0;
+}
+main .grid-card-fav:hover:not(:disabled) { background: transparent; color: var(--gold-light); transform: none; }
+main .grid-card-fav.active { color: #d4667a; }
+main .grid-card-title {
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+  line-height: 1.25;
+  color: var(--cream);
+  margin: 0 0 0.4rem;
+  min-height: 2.5em;
+}
+main .grid-card-desc {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: rgba(244, 236, 226, 0.6);
+  margin: 0 0 1rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.grid-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: auto;
+}
+main .grid-card-price {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--cream);
+}
+main .grid-card-cta {
+  background: var(--gold-light);
+  color: #2b1208;
+  text-decoration: none;
+  border-radius: 6px;
+  padding: 0.42rem 0.9rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+main .grid-card-cta:hover { background: #f2e0b6; }
+
+/* --- Paginazione --- */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+main .page-btn {
+  background: transparent;
+  border: 1px solid rgba(244, 236, 226, 0.2);
+  color: rgba(244, 236, 226, 0.75);
+  border-radius: 6px;
+  min-width: 2.2rem;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+main .page-btn:hover:not(:disabled) {
+  border-color: var(--gold-light);
+  color: var(--gold-light);
+  background: transparent;
+  transform: none;
+}
+main .page-btn.active {
+  background: var(--gold-light);
+  border-color: var(--gold-light);
+  color: #2b1208;
+  font-weight: 700;
+}
+main .page-btn:disabled { opacity: 0.3; background: transparent; }
+.page-gap { color: rgba(244, 236, 226, 0.35); padding: 0 0.2rem; }
+
 .home-hero {
   text-align: center;
   padding: 1.75rem 2.25rem 2rem;
