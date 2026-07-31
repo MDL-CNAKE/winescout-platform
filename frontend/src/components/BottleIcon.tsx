@@ -64,7 +64,11 @@ interface Palette {
 
 function paletteFor(w: BottleData): Palette {
   const isRed = w.type === "red";
-  const isRiserva = /riserva/i.test(w.name ?? "");
+  // Veste piu' austera per le qualita' piu' alte. Il criterio era la
+  // menzione "Riserva" nel nome, rimossa perche' indica per legge un
+  // affinamento minimo che il dataset non conosce: al suo posto il
+  // punteggio, che e' un dato reale.
+  const isRiserva = w.quality >= 8;
   // Gradazione normalizzata sul range del dataset (8-15% vol).
   const body = ((w.alcohol ?? DEFAULT_ALCOHOL) - 8) / 7;
 
@@ -84,7 +88,7 @@ function paletteFor(w: BottleData): Palette {
     emptyGlass: isRed ? "#5b4038" : "#e9e6d4",
     // Riserva: capsula scura e austera invece dell'oro; l'oro resta alle
     // qualita' alte non Riserva.
-    cap: isRiserva ? "#2a1017" : w.quality >= 7 ? "#c9a24b" : "#6b5a4a",
+    cap: isRiserva ? "#2a1017" : w.quality >= 6 ? "#c9a24b" : "#6b5a4a",
     isRiserva,
   };
 }

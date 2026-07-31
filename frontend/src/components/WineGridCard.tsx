@@ -17,13 +17,21 @@ import {
   mainPairing,
 } from "../lib/wineLabel";
 
+/** Voci dell'abbinamento che non sono piatti: reggono "come", non "con". */
+const OCCASIONI = ["aperitivo"];
+
 function description(w: Wine): string {
   const corpo = alcoholDescriptor(w.alcohol);
   const dolcezza = sugarDescriptor(w.residual_sugar, w.fixed_acidity);
   const tipo = w.type === "red" ? "rosso" : "bianco";
   const base = `Un ${tipo} ${corpo}, ${dolcezza}, ${w.alcohol.toFixed(1)}% vol con pH ${w.ph.toFixed(2)}.`;
+
   const pairing = mainPairing(w);
-  return pairing ? `${base} Da provare con ${pairing.toLowerCase()}.` : base;
+  if (!pairing) return base;
+
+  const dish = pairing.toLowerCase();
+  const preposizione = OCCASIONI.includes(dish) ? "come" : "con";
+  return `${base} Da provare ${preposizione} ${dish}.`;
 }
 
 /** Iniziali del nome, per l'indicatore compatto sulle card. */
@@ -106,7 +114,9 @@ export function WineGridCard({
 
       <div className="grid-card-footer">
         <span className="grid-card-price">
-          {wine.price_eur != null ? `${wine.price_eur.toFixed(2).replace(".", ",")} €` : "—"}
+          {/* Spazio unificatore: il simbolo di valuta non si separa mai
+              dalla cifra, qualunque larghezza abbia la card. */}
+          {wine.price_eur != null ? `${wine.price_eur.toFixed(2).replace(".", ",")} €` : "—"}
         </span>
         <Link to="/vino/$wineId" params={{ wineId: String(wine.id) }} className="grid-card-cta">
           Scopri

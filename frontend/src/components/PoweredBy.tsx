@@ -12,7 +12,7 @@ export function PoweredBy() {
       <span className="powered-by-label">Powered by</span>
       <span className="powered-by-name">
         <span className="powered-by-she">She</span>
-        <span className="powered-by-co">and Co</span>
+        <span className="powered-by-co">&amp; Co</span>
       </span>
     </div>
   );

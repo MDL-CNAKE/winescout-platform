@@ -226,6 +226,47 @@ applicata su un proxy, e in una manciata di casi al confine fra due
 categorie potrebbe assegnare la classe adiacente. La scelta è dichiarata
 perché il dato esatto non è ricavabile dal dataset.
 
+## "Riserva" usata come sinonimo di qualità alta (corretto)
+
+### Il problema individuato
+
+`src/naming.py` aggiungeva la menzione **Riserva** a ogni vino con punteggio
+di qualità ≥ 7, cioè a circa il 20% del catalogo. Sfogliando la griglia
+ordinata per qualità decrescente il difetto saltava all'occhio: pagine
+intere di bianchi "Riserva".
+
+Nel diritto vitivinicolo italiano *Riserva* non è un giudizio qualitativo:
+è una **menzione tradizionale che indica un periodo minimo di affinamento**,
+fissato dal disciplinare di ciascuna DOC o DOCG. Il dataset UCI non contiene
+né la durata dell'affinamento, né l'annata, né la denominazione — quindi la
+menzione veniva attribuita sulla base di un dato che non ha nulla a che
+vedere con ciò che quella parola significa. Sui bianchi l'incongruenza è
+ancora più marcata, perché diversi disciplinari per i bianchi la Riserva non
+la prevedono affatto.
+
+È lo stesso schema di errore delle soglie di dolcezza arbitrarie: prendere
+un termine tecnico del lessico enologico e usarlo per dire un'altra cosa.
+
+### La correzione
+
+La menzione è stata **rimossa dai nomi**. La qualità resta pienamente
+visibile nell'interfaccia come punteggio (★ 7/10), dove è leggibile senza
+travestirsi da categoria merceologica normata.
+
+I criteri che dipendevano dalla menzione sono stati riportati al dato che
+realmente li motivava:
+
+- lo stile di packaging "Elegante" si basa ora sul punteggio (≥ 7) invece
+  che sulla presenza della parola nel nome;
+- il formato Magnum sui punteggi ≥ 8;
+- la veste austera della bottiglia generata (capsula scura allungata,
+  filetti oro, colore più concentrato) sui punteggi ≥ 8.
+
+La regola generale che se ne ricava, applicata in tutto il progetto: un
+termine enologico normato si usa solo se il dato che lo giustifica è
+presente nel dataset. Vale per il vitigno, per la dolcezza e ora per la
+menzione Riserva.
+
 ## Assenza dell'informazione sul vitigno
 
 Il dataset UCI Wine Quality (rossi e bianchi "Vinho Verde" portoghesi) non

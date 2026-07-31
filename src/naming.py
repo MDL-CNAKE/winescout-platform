@@ -7,7 +7,15 @@ caratteristiche chimiche del vino (non nomi di fantasia scollegati dai dati,
 e non nomi che imitano marchi/cantine reali esistenti). Il criterio e'
 dichiarato esplicitamente nella dichiarazione etica del progetto.
 
-Struttura del nome: <tipo> <corpo> <secondo descrittore> [Riserva] - Lotto #id
+Struttura del nome: <tipo> <corpo> <secondo descrittore> - Lotto #id
+
+Il nome NON contiene "Riserva". Nel diritto vitivinicolo italiano la
+menzione indica un periodo minimo di affinamento fissato dal disciplinare
+di ogni DOC/DOCG, non un livello qualitativo: il dataset non contiene
+alcuna informazione su affinamento o annata, quindi usarla come sinonimo di
+"punteggio alto" sarebbe una promessa non verificabile. La qualita' resta
+visibile nell'interfaccia come punteggio, dove e' gia' leggibile senza
+travestirsi da categoria merceologica.
 
 Il secondo descrittore segue il registro enologico reale:
 
@@ -55,8 +63,7 @@ def build_name(row: pd.Series, wine_id: int) -> str:
 
     corpo = body_category(row["alcohol"]).capitalize()
     desc = second_descriptor(sugar, acidity, ph)
-    riserva = " Riserva" if row["quality"] >= 7 else ""
-    return f"{base} {corpo} {desc}{riserva} - Lotto #{wine_id:04d}"
+    return f"{base} {corpo} {desc} - Lotto #{wine_id:04d}"
 
 
 def main() -> None:

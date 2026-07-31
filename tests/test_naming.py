@@ -47,22 +47,31 @@ def test_non_secco_porta_la_dolcezza():
     assert second_descriptor(sugar=50.0, acidity=6.0, ph=3.3) == "Dolce"
 
 
-def test_build_name_red_riserva():
+def test_build_name_red():
     row = pd.Series({
         "type": "red", "alcohol": 13.0, "residual_sugar": 1.5,
         "fixed_acidity": 7.0, "ph": 3.0, "quality": 8,
     })
-    assert build_name(row, wine_id=42) == "Rosso Corposo Fresco Riserva - Lotto #0042"
+    assert build_name(row, wine_id=42) == "Rosso Corposo Fresco - Lotto #0042"
 
 
-def test_build_name_white_no_riserva_below_quality_7():
+def test_build_name_white():
     row = pd.Series({
         "type": "white", "alcohol": 10.0, "residual_sugar": 20.0,
         "fixed_acidity": 5.0, "ph": 3.3, "quality": 6,
     })
-    name = build_name(row, wine_id=7)
-    assert name == "Bianco Equilibrato Amabile - Lotto #0007"
-    assert "Riserva" not in name
+    assert build_name(row, wine_id=7) == "Bianco Equilibrato Amabile - Lotto #0007"
+
+
+def test_riserva_non_compare_mai_nel_nome():
+    """'Riserva' indica per legge un affinamento minimo fissato dal
+    disciplinare, informazione assente dal dataset: non puo' essere usata
+    come sinonimo di punteggio alto, nemmeno per la qualita' massima."""
+    row = pd.Series({
+        "type": "red", "alcohol": 13.0, "residual_sugar": 1.0,
+        "fixed_acidity": 7.0, "ph": 3.0, "quality": 9,
+    })
+    assert "Riserva" not in build_name(row, wine_id=1)
 
 
 def test_build_name_id_is_zero_padded():

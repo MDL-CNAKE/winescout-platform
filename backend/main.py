@@ -441,8 +441,11 @@ class PackagingItem(BaseModel):
 
 
 def _packaging_style(name: str, quality: int, price_eur: float | None) -> str:
-    is_riserva = "Riserva" in name
-    if is_riserva and quality >= 7:
+    """Il criterio si basa su qualita' e prezzo, non sulla menzione
+    'Riserva': quella indica per legge un affinamento minimo di cui il
+    dataset non ha traccia, ed e' stata rimossa dai nomi."""
+    del name  # mantenuto nella firma per compatibilita' con i chiamanti
+    if quality >= 7:
         return "Elegante"
     if quality <= 4 or (price_eur is not None and price_eur < 13):
         return "Young"
@@ -452,7 +455,8 @@ def _packaging_style(name: str, quality: int, price_eur: float | None) -> str:
 
 
 def _bottle_format(name: str, quality: int) -> str:
-    if "Riserva" in name and quality >= 8:
+    del name
+    if quality >= 8:
         return "Magnum 1.5L"
     if quality <= 4:
         return "Mignon 375ml"

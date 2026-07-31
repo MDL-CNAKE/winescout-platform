@@ -104,6 +104,27 @@ export function Home() {
           />
         </>
       )}
+
+      {/* Credenziali del modello in chiusura: le due metriche restano
+          distinte, 0,52 e' la media in cross-validation e 0,56 il test set
+          indipendente. Confonderle sarebbe scorretto. */}
+      <ul className="trust-strip">
+        <li>
+          <span className="trust-value">6.497</span>
+          <span className="trust-label">vini analizzati</span>
+        </li>
+        <li>
+          <span className="trust-value">5-fold</span>
+          <span className="trust-label">cross-validation · R² 0,52</span>
+        </li>
+        <li>
+          <span className="trust-value">R² 0,56</span>
+          <span className="trust-label">su test set indipendente</span>
+        </li>
+      </ul>
+      <p className="trust-source">
+        Dataset UCI Wine Quality · RandomForestRegressor con pipeline scikit-learn
+      </p>
     </section>
   );
 }
