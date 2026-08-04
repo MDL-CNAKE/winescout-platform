@@ -21,6 +21,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 
 from src.conservation import valuta_conservazione
+from src.levers import analizza_leve
 from src.database.connection import DatabaseConnection
 from src.models.recommender import WineRecommender
 from src.rag.retriever import KnowledgeRetriever
@@ -827,6 +828,72 @@ def conservazione_vino(wine_id: int):
         "quality": w["quality"], "price_eur": w["price_eur"],
         "punteggio": c.punteggio, "giudizio": c.giudizio,
         "indicatori": [vars(i) for i in c.indicatori],
+    }
+
+
+# --------------------------------------------------------------------------
+# Leve di miglioramento
+#
+# Analisi controfattuale a un parametro alla volta sul modello addestrato:
+# quale correzione conviene applicare a questo lotto e quanto rende. Vedi
+# src/levers.py per i passi scelti e per i limiti dell'approccio.
+# --------------------------------------------------------------------------
+
+class EffettoLevaOut(BaseModel):
+    campo: str
+    etichetta: str
+    unita: str
+    valore_attuale: float
+    valore_proposto: float
+    variazione: float
+    delta_qualita: float
+    direzione: str
+    intervento: str
+
+
+class LeveOut(BaseModel):
+    id: int
+    name: str
+    qualita_reale: int
+    previsione_attuale: float
+    leve: list[EffettoLevaOut]
+
+
+@app.get("/api/leve/{wine_id}", response_model=LeveOut)
+def leve_di_miglioramento(wine_id: int):
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT id, name, type, quality, fixed_acidity, volatile_acidity, "
+                "citric_acid, residual_sugar, chlorides, free_sulfur_dioxide, "
+                "total_sulfur_dioxide, density, ph, sulphates, alcohol "
+                "FROM wines WHERE id = %s",
+                (wine_id,),
+            )
+            w = cursor.fetchone()
+            cursor.close()
+    except Exception as e:
+        logger.exception("Errore nel recupero del vino")
+        raise HTTPException(status_code=500, detail="Errore nel recupero del vino") from e
+
+    if w is None:
+        raise HTTPException(status_code=404, detail=f"Vino con id={wine_id} non trovato")
+
+    try:
+        wine = {k: (float(v) if k not in ("id", "name", "type", "quality") else v)
+                for k, v in w.items()}
+        base, leve = analizza_leve(state["model"], wine)
+    except Exception as e:
+        logger.exception("Errore nel calcolo delle leve")
+        raise HTTPException(status_code=500, detail="Errore nel calcolo delle leve") from e
+
+    return {
+        "id": w["id"],
+        "name": w["name"],
+        "qualita_reale": w["quality"],
+        "previsione_attuale": base,
+        "leve": [vars(e) for e in leve],
     }
 
 

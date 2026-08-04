@@ -177,6 +177,31 @@ export const fetchConservazione = (type?: "red" | "white" | null, limit = 60) =>
 export const fetchConservazioneVino = (wineId: number) =>
   api.get<Conservazione>(`/api/conservazione/${wineId}`).then((res) => res.data);
 
+/* --- Leve di miglioramento --------------------------------------------- */
+
+export interface EffettoLeva {
+  campo: string;
+  etichetta: string;
+  unita: string;
+  valore_attuale: number;
+  valore_proposto: number;
+  variazione: number;
+  delta_qualita: number;
+  direzione: "aumentare" | "ridurre";
+  intervento: string;
+}
+
+export interface Leve {
+  id: number;
+  name: string;
+  qualita_reale: number;
+  previsione_attuale: number;
+  leve: EffettoLeva[];
+}
+
+export const fetchLeve = (wineId: number) =>
+  api.get<Leve>(`/api/leve/${wineId}`).then((res) => res.data);
+
 /* --- Selezioni di lavoro condivise ------------------------------------ */
 
 export interface Operator {

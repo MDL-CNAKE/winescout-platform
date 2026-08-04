@@ -1255,6 +1255,55 @@ main .cons-pill.livello-critico { background: rgba(212, 102, 122, 0.18); color: 
 
 .cons-table td:first-child a { color: var(--gold-light); }
 
+/* --- Leve di miglioramento --- */
+.leve-list { list-style: none; margin: 1.5rem 0 0; padding: 0; display: grid; gap: 1rem; }
+.leva {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(231, 211, 163, 0.18);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+}
+.leva-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+main .leva-azione { font-weight: 600; font-size: 0.98rem; color: var(--cream); }
+main .leva-delta {
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: #9fdcaa;
+  white-space: nowrap;
+}
+main .leva-valori {
+  font-size: 0.85rem;
+  color: rgba(244, 236, 226, 0.65);
+  margin-top: 0.15rem;
+}
+main .leva-valori strong { color: var(--gold-light); }
+.leva-barra {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(159, 220, 170, 0.35), #9fdcaa);
+  margin: 0.7rem 0 0.6rem;
+}
+main .leva-intervento {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: rgba(244, 236, 226, 0.6);
+}
+.leve-vuoto {
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid var(--gold-light);
+  border-radius: 0 8px 8px 0;
+  padding: 1rem 1.2rem;
+  margin-top: 1.5rem;
+}
+main .leve-vuoto p:first-child { margin-top: 0; color: var(--cream); }
+main .leve-vuoto p:last-child { margin-bottom: 0; }
+
 /* --- Nota di validazione: numeri della validazione e loro limite --- */
 main .validation-note {
   margin-top: 1.75rem;

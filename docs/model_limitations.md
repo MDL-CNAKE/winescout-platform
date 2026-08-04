@@ -328,6 +328,40 @@ Distribuzione risultante:
   operativi diffusi, non valori di legge: cantine diverse lavorano con
   margini diversi a seconda dello stile.
 
+## Leve di miglioramento: i limiti dell'analisi a un fattore per volta
+
+La funzionalità implementata in `src/levers.py` risponde alla domanda
+operativa che segue la predizione: *su quale parametro conviene intervenire
+su questo lotto, e quanto rende*. Per ogni parametro si applica una
+correzione realistica, tenendo fermi tutti gli altri, e si osserva come
+cambia la previsione del modello.
+
+Tre limiti la accompagnano, dichiarati anche nell'interfaccia accanto ai
+risultati.
+
+**È la lettura del modello, non una legge fisica.** Il modello spiega poco
+più della metà della variabilità (R² 0,56 sul test set): indica una
+tendenza, non un esito garantito.
+
+**Le variabili chimiche sono correlate fra loro.** In cantina non si abbassa
+l'acidità volatile "tenendo fermo tutto il resto": ogni intervento ne muove
+altri. L'analisi a un fattore per volta ignora le interazioni ed è quindi
+**ottimistica** — il guadagno reale sarà tipicamente inferiore a quello
+stimato. Un'estensione futura sarebbe valutare combinazioni di due parametri,
+al costo di un numero di simulazioni molto maggiore.
+
+**I passi sono scelti, non ottimizzati.** Sono correzioni plausibili in una
+lavorazione reale (mezzo grado alcolico, 0,10 g/L di acidità volatile), non
+spostamenti statistici. Una sensibilità calcolata su tre deviazioni standard
+produrrebbe numeri più grandi e privi di utilità: nessuno in cantina può
+dimezzare l'alcol di un vino. La scelta rende l'analisi meno impressionante e
+più utilizzabile.
+
+**Assenza di leve è un esito legittimo.** Per alcuni lotti nessuna correzione
+a parametro singolo migliora la stima. L'interfaccia lo dichiara invece di
+mostrare una lista vuota o di abbassare le soglie fino a trovare qualcosa:
+significa che, secondo il modello, il margine non sta in una sola leva.
+
 ## Assenza dell'informazione sul vitigno
 
 Il dataset UCI Wine Quality (rossi e bianchi "Vinho Verde" portoghesi) non

@@ -24,13 +24,21 @@ import { ChemicalRadar } from "../components/ChemicalRadar";
 import { ValidationNote } from "../components/ValidationNote";
 import { EmptyState } from "../components/EmptyState";
 import { ConservazioneScheda } from "../components/ConservazioneScheda";
+import { LeveScheda } from "../components/LeveScheda";
 import { wineTitle, wineLot, allPairings } from "../lib/wineLabel";
 import { BottleIcon } from "../components/BottleIcon";
 
-type Tab = "predizione" | "conservazione" | "raccomandazioni" | "packaging" | "sommelier";
+type Tab =
+  | "predizione"
+  | "leve"
+  | "conservazione"
+  | "raccomandazioni"
+  | "packaging"
+  | "sommelier";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "predizione", label: "Predizione" },
+  { key: "leve", label: "Leve" },
   { key: "conservazione", label: "Conservazione" },
   { key: "raccomandazioni", label: "Raccomandazioni" },
   { key: "packaging", label: "Packaging" },
@@ -137,6 +145,7 @@ export function Vino() {
 
         <div className="vino-tab-panel">
           {tab === "predizione" && <TabPredizione wine={wine} />}
+          {tab === "leve" && <LeveScheda wineId={id} />}
           {tab === "conservazione" && <ConservazioneScheda wineId={id} />}
           {tab === "raccomandazioni" && <TabRaccomandazioni wineId={id} />}
           {tab === "packaging" && <TabPackaging wineId={id} />}
