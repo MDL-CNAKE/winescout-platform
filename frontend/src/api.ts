@@ -143,6 +143,40 @@ export const fetchCheaperAlternatives = (wineId: number) =>
     .get<CheaperAlternative[]>(`/api/recommend/${wineId}/cheaper`)
     .then((res) => res.data);
 
+/* --- Predisposizione alla conservazione -------------------------------- */
+
+export interface Indicatore {
+  nome: string;
+  valore: number;
+  unita: string;
+  livello: "buono" | "attenzione" | "critico";
+  spiegazione: string;
+}
+
+export interface ConservazioneRiga {
+  id: number;
+  name: string;
+  type: "red" | "white";
+  quality: number;
+  price_eur: number | null;
+  punteggio: number;
+  giudizio: string;
+}
+
+export interface Conservazione extends ConservazioneRiga {
+  indicatori: Indicatore[];
+}
+
+export const fetchConservazione = (type?: "red" | "white" | null, limit = 60) =>
+  api
+    .get<ConservazioneRiga[]>("/api/conservazione", {
+      params: { ...(type ? { type } : {}), limit },
+    })
+    .then((res) => res.data);
+
+export const fetchConservazioneVino = (wineId: number) =>
+  api.get<Conservazione>(`/api/conservazione/${wineId}`).then((res) => res.data);
+
 /* --- Selezioni di lavoro condivise ------------------------------------ */
 
 export interface Operator {

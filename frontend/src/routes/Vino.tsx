@@ -23,16 +23,18 @@ import {
 import { ChemicalRadar } from "../components/ChemicalRadar";
 import { ValidationNote } from "../components/ValidationNote";
 import { EmptyState } from "../components/EmptyState";
+import { ConservazioneScheda } from "../components/ConservazioneScheda";
 import { wineTitle, wineLot, allPairings } from "../lib/wineLabel";
 import { BottleIcon } from "../components/BottleIcon";
 
-type Tab = "predizione" | "raccomandazioni" | "packaging" | "sommelier";
+type Tab = "predizione" | "conservazione" | "raccomandazioni" | "packaging" | "sommelier";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "predizione", label: "Predizione" },
+  { key: "conservazione", label: "Conservazione" },
   { key: "raccomandazioni", label: "Raccomandazioni" },
   { key: "packaging", label: "Packaging" },
-  { key: "sommelier", label: "Sommelier" },
+  { key: "sommelier", label: "SVEVA" },
 ];
 
 export function Vino() {
@@ -55,7 +57,7 @@ export function Vino() {
   if (isLoading) {
     return (
       <section>
-        <EmptyState title="Il sommelier sta recuperando la scheda..." loading />
+        <EmptyState title="SVEVA sta recuperando la scheda..." loading />
       </section>
     );
   }
@@ -135,6 +137,7 @@ export function Vino() {
 
         <div className="vino-tab-panel">
           {tab === "predizione" && <TabPredizione wine={wine} />}
+          {tab === "conservazione" && <ConservazioneScheda wineId={id} />}
           {tab === "raccomandazioni" && <TabRaccomandazioni wineId={id} />}
           {tab === "packaging" && <TabPackaging wineId={id} />}
           {tab === "sommelier" && <TabSommelier wine={wine} />}
@@ -345,10 +348,10 @@ function TabSommelier({ wine }: { wine: Wine }) {
         disabled={!question.trim() || mutation.isPending}
         onClick={() => mutation.mutate()}
       >
-        {mutation.isPending ? "Il sommelier sta pensando..." : "Chiedi al Sommelier"}
+        {mutation.isPending ? "SVEVA sta pensando..." : "Chiedi a SVEVA"}
       </button>
 
-      {mutation.isError && <p className="error">Errore nella chiamata al Sommelier.</p>}
+      {mutation.isError && <p className="error">Errore nella chiamata a SVEVA.</p>}
 
       {mutation.isSuccess && (
         <div className="result-card">

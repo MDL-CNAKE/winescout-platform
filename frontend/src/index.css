@@ -192,7 +192,26 @@ textarea, select, input {
 
 .sommelier-header { display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem; }
 .sommelier-header svg { flex-shrink: 0; }
-.sommelier-header h2 { margin-bottom: 0.25rem; }
+.sommelier-header h2 {
+  margin-bottom: 0.15rem;
+  font-family: var(--font-display);
+  font-size: 2.1rem;
+  letter-spacing: 0.06em;
+}
+main .sommelier-acronym {
+  margin: 0 0 0.8rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+main .sommelier-greeting {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: var(--cream);
+  max-width: 46ch;
+}
 
 /* ===== Predizione / Raccomandazioni — coerenza visiva con Catalogo ===== */
 
@@ -456,8 +475,7 @@ main .operator-cancel:hover:not(:disabled) {
   gap: 1rem;
   padding-bottom: 1rem;
 }
-main .filter-toggle,
-main .filter-reset {
+main .filter-toggle {
   background: transparent;
   color: var(--cream);
   border: 1px solid rgba(244, 236, 226, 0.35);
@@ -471,7 +489,6 @@ main .filter-reset {
   align-items: center;
   gap: 0.5rem;
 }
-main .filter-toggle.open,
 main .filter-toggle:hover:not(:disabled) {
   border-color: var(--gold-light);
   color: var(--gold-light);
@@ -501,16 +518,103 @@ main .filter-count {
   text-transform: uppercase;
 }
 
-/* --- Pannello filtri --- */
-.filter-panel {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 1.5rem;
-  padding: 1.25rem 0 1.5rem;
-  border-top: 1px solid rgba(244, 236, 226, 0.12);
+/* --- Pannello filtri a scomparsa --- */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 4, 6, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 50;
+  animation: overlay-in 0.15s ease;
+}
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.filter-drawer {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: min(400px, 90vw);
+  background: #1c0d13;
+  border-right: 1px solid rgba(231, 211, 163, 0.25);
+  display: flex;
+  flex-direction: column;
+  animation: drawer-in 0.2s ease;
+}
+@keyframes drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 1.75rem 1rem;
   border-bottom: 1px solid rgba(244, 236, 226, 0.12);
-  margin-bottom: 1.5rem;
-  align-items: start;
+}
+.drawer-head h2 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  margin: 0;
+  color: var(--cream);
+  flex: 1;
+}
+.filter-drawer .drawer-clear {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: rgba(244, 236, 226, 0.6);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.filter-drawer .drawer-clear:hover:not(:disabled) {
+  background: transparent;
+  color: var(--gold-light);
+  transform: none;
+}
+.filter-drawer .drawer-clear:disabled { opacity: 0.35; background: transparent; }
+.filter-drawer .drawer-close {
+  background: transparent;
+  border: 1px solid rgba(244, 236, 226, 0.28);
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  color: var(--cream);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.filter-drawer .drawer-close:hover {
+  background: transparent;
+  border-color: var(--gold-light);
+  color: var(--gold-light);
+  transform: none;
+}
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+.drawer-foot {
+  padding: 1.25rem 1.75rem;
+  border-top: 1px solid rgba(244, 236, 226, 0.12);
+}
+.filter-drawer .drawer-apply {
+  width: 100%;
+  padding: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+.filter-range strong.muted {
+  color: rgba(244, 236, 226, 0.45);
+  font-weight: 500;
 }
 .filter-group-title {
   display: block;
@@ -1077,6 +1181,79 @@ main .vino-tab.active {
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover { background: rgba(231, 211, 163, 0.6); }
+
+/* --- Conservazione: verdetto, indicatori, tabella di magazzino --- */
+.cons-verdict {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  border-left: 4px solid;
+  background: rgba(255, 255, 255, 0.06);
+  margin-bottom: 1.5rem;
+}
+.cons-verdict h3 { margin: 0 0 0.3rem; }
+main .cons-score {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+}
+main .cons-score small { font-size: 1rem; font-weight: 500; opacity: 0.6; }
+
+.cons-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.8rem; }
+.cons-item {
+  border-left: 3px solid;
+  border-radius: 0 8px 8px 0;
+  padding: 0.8rem 1rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+.cons-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 0.3rem;
+}
+main .cons-item-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+}
+main .cons-item-value { font-weight: 700; font-size: 0.95rem; }
+main .cons-item-text {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: rgba(244, 236, 226, 0.7);
+}
+
+main .cons-pill {
+  display: inline-block;
+  min-width: 2.4rem;
+  text-align: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+/* Tre livelli, una sola scala cromatica per tutta la funzionalita'. */
+.livello-buono { border-color: #7fbf8a; }
+.livello-attenzione { border-color: var(--gold-light); }
+.livello-critico { border-color: #d4667a; }
+main .cons-verdict.livello-buono .cons-score,
+main .cons-item.livello-buono .cons-item-value { color: #9fdcaa; }
+main .cons-verdict.livello-attenzione .cons-score,
+main .cons-item.livello-attenzione .cons-item-value { color: var(--gold-light); }
+main .cons-verdict.livello-critico .cons-score,
+main .cons-item.livello-critico .cons-item-value { color: #e88a9a; }
+main .cons-pill.livello-buono { background: rgba(127, 191, 138, 0.18); color: #9fdcaa; }
+main .cons-pill.livello-attenzione { background: rgba(231, 211, 163, 0.18); color: var(--gold-light); }
+main .cons-pill.livello-critico { background: rgba(212, 102, 122, 0.18); color: #e88a9a; }
+
+.cons-table td:first-child a { color: var(--gold-light); }
 
 /* --- Nota di validazione: numeri della validazione e loro limite --- */
 main .validation-note {

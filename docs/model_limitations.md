@@ -267,6 +267,67 @@ termine enologico normato si usa solo se il dato che lo giustifica è
 presente nel dataset. Vale per il vitigno, per la dolcezza e ora per la
 menzione Riserva.
 
+## Indice di conservazione: cosa misura e cosa no
+
+### Perché non si chiama "potenziale di invecchiamento"
+
+L'indice implementato in `src/conservation.py` valuta la **predisposizione
+alla conservazione**: la capacità del vino di resistere a ossidazione e
+alterazione microbica. Non valuta il potenziale di invecchiamento nobile,
+cioè l'evoluzione verso i profumi terziari e l'assestamento della struttura.
+
+La distinzione non è terminologica ma sostanziale. L'invecchiamento dipende
+in larga parte da **tannini, polifenoli ed estratto secco**, che nel dataset
+UCI non compaiono. Per un vino rosso il tannino è la struttura portante
+dell'invecchiamento: senza quel dato, qualunque previsione sull'evoluzione
+sarebbe inventata. Il nome dichiara quindi ciò che l'indice misura davvero.
+
+### Non è un modello addestrato
+
+Il dataset non contiene alcuna etichetta sull'evoluzione dei vini nel tempo:
+non esiste una verità di riferimento su cui addestrare o validare. L'indice è
+perciò un **sistema a regole** costruito su parametri enologici consolidati,
+come `src/pairing.py`. Non ha un'accuratezza misurabile: ha una motivazione
+ispezionabile riga per riga. Presentarlo come machine learning sarebbe una
+falsificazione.
+
+### Su cosa si basa
+
+| Indicatore | Peso | Motivazione |
+|---|---:|---|
+| SO₂ molecolare | 40% | Frazione di solforosa realmente attiva, calcolata da SO₂ libera e pH secondo la formula standard `SO₂lib / (1 + 10^(pH − 1,81))`. Riferimento operativo 0,5–0,8 mg/L. È l'unico parametro su cui la cantina può intervenire direttamente |
+| Acidità volatile | 30% | Marcatore di deterioramento già in atto, confrontato con i limiti di legge UE (1,2 g/L rossi, 1,08 g/L bianchi) |
+| pH | 20% | Conservante di per sé, e governa l'efficacia della solforosa |
+| Quota di SO₂ libera sul totale | 10% | Indica quanta riserva protettiva è ancora disponibile e non legata |
+
+### Verifica di non ridondanza
+
+Sul catalogo, la correlazione fra indice di conservazione e punteggio di
+qualità è **0,163**: praticamente nulla. L'indice non è quindi un doppione
+travestito della qualità — un vino ben giudicato può essere mal protetto e
+viceversa. È la condizione che rende la funzionalità utile invece che
+decorativa.
+
+Distribuzione risultante:
+
+| | Rossi | Bianchi |
+|---|---:|---:|
+| Adatto alla conservazione | 30,5% | 84,9% |
+| Con monitoraggio | 51,1% | 14,5% |
+| Da immettere sul mercato | 18,4% | 0,6% |
+
+### Limiti residui
+
+- **I vini del dataset sono Vinho Verde portoghesi**, prodotti per il consumo
+  giovane: una solforosa contenuta è in parte fisiologica e non
+  necessariamente un errore di cantina. L'indice segnala un rischio di
+  conservazione, non un difetto di lavorazione.
+- Mancano annata, condizioni di stoccaggio e temperatura di conservazione,
+  che nella realtà pesano quanto la chimica del vino.
+- Le soglie adottate (0,5 e 0,8 mg/L di SO₂ molecolare) sono riferimenti
+  operativi diffusi, non valori di legge: cantine diverse lavorano con
+  margini diversi a seconda dello stile.
+
 ## Assenza dell'informazione sul vitigno
 
 Il dataset UCI Wine Quality (rossi e bianchi "Vinho Verde" portoghesi) non

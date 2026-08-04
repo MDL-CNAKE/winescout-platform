@@ -7,6 +7,7 @@ import { createRootRoute, createRoute, createRouter, Outlet, Link } from "@tanst
 import { Home } from "./routes/Home";
 import { Predizione } from "./routes/Predizione";
 import { Packaging } from "./routes/Packaging";
+import { Conservazione } from "./routes/Conservazione";
 import { Sommelier } from "./routes/Sommelier";
 import { Vino } from "./routes/Vino";
 import { BrandLockup } from "./components/BrandLockup";
@@ -24,8 +25,9 @@ const rootRoute = createRootRoute({
         <nav>
           <Link to="/" activeProps={{ className: "active" }}>Catalogo</Link>
           <Link to="/predizione" activeProps={{ className: "active" }}>Predizione</Link>
+          <Link to="/conservazione" activeProps={{ className: "active" }}>Conservazione</Link>
           <Link to="/packaging" activeProps={{ className: "active" }}>Packaging</Link>
-          <Link to="/sommelier" activeProps={{ className: "active" }}>Sommelier Virtuale</Link>
+          <Link to="/sommelier" activeProps={{ className: "active" }}>SVEVA</Link>
         </nav>
       </header>
       <main>
@@ -55,6 +57,12 @@ const predizioneRoute = createRoute({
   component: Predizione,
 });
 
+const conservazioneRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/conservazione",
+  component: Conservazione,
+});
+
 const packagingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/packaging",
@@ -76,6 +84,7 @@ const sommelierRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   homeRoute,
   predizioneRoute,
+  conservazioneRoute,
   packagingRoute,
   vinoRoute,
   sommelierRoute,

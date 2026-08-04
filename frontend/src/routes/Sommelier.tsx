@@ -24,8 +24,15 @@ export function Sommelier() {
       <div className="sommelier-header">
         <RobotSommelierIcon />
         <div>
-          <h2>Sommelier Virtuale AI</h2>
-          <p className="hint">Chiedi consigli su abbinamenti, note di degustazione o curiosità sul vino.</p>
+          <h2>SVEVA</h2>
+          <p className="sommelier-acronym">Sommelier Virtuale Esperta in Vini e Abbinamenti</p>
+          <p className="sommelier-greeting">
+            Ciao, sono SVEVA. Raccontami il piatto e ti dico cosa versare, oppure partiamo
+            da una bottiglia del catalogo.
+          </p>
+          <p className="hint">
+            Chiedi consigli su abbinamenti, note di degustazione o curiosità sul vino.
+          </p>
         </div>
       </div>
 
@@ -59,10 +66,10 @@ export function Sommelier() {
         disabled={!question.trim() || mutation.isPending}
         onClick={() => mutation.mutate()}
       >
-        {mutation.isPending ? "Il sommelier sta pensando..." : "Chiedi al Sommelier"}
+        {mutation.isPending ? "SVEVA sta pensando..." : "Chiedi a SVEVA"}
       </button>
 
-      {mutation.isError && <p className="error">Errore nella chiamata al Sommelier.</p>}
+      {mutation.isError && <p className="error">Errore nella chiamata a SVEVA.</p>}
 
       {mutation.isSuccess && (
         <div className="result-card">

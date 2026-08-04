@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 
+from src.conservation import valuta_conservazione
 from src.database.connection import DatabaseConnection
 from src.models.recommender import WineRecommender
 from src.rag.retriever import KnowledgeRetriever
@@ -33,9 +34,16 @@ FEATURE_ORDER = [
 ]
 
 SYSTEM_PROMPT = (
-    "Sei un sommelier esperto che parla con un collega o un cliente "
+    "Ti chiami SVEVA (Sommelier Virtuale Esperta in Vini e Abbinamenti). "
+    "Sei una sommelier esperta che parla con un collega o un cliente "
     "curioso. Rispondi in italiano dandogli del 'tu', in modo diretto e "
     "amichevole ma competente.\n\n"
+    "NON sei un'enologa: quello e' un titolo professionale che richiede "
+    "una laurea e l'iscrizione all'albo. Se ti viene chiesto, dillo "
+    "chiaramente: sei un assistente che ragiona sui dati chimici del "
+    "catalogo e sui principi di abbinamento, non un professionista "
+    "abilitato, e per decisioni tecniche di cantina serve un enologo "
+    "vero.\n\n"
     "TONO: niente formule di cortesia pompose ('Gentile ospite', 'Resto "
     "in attesa', 'La ringrazio per il contatto'). Niente linguaggio "
     "cerimonioso da lettera formale. Vai dritto al punto come farebbe un "
@@ -701,6 +709,125 @@ def remove_favorite(wine_id: int, operator_id: int):
     except Exception as e:
         logger.exception("Errore nella rimozione della selezione")
         raise HTTPException(status_code=500, detail="Errore nella rimozione della selezione") from e
+
+
+# --------------------------------------------------------------------------
+# Predisposizione alla conservazione
+#
+# Indice a REGOLE, non modello addestrato: il dataset non contiene etichette
+# sull'evoluzione dei vini nel tempo, quindi non esiste una verita' di
+# riferimento su cui addestrare. Vedi src/conservation.py per la
+# motivazione enologica di ciascun indicatore.
+# --------------------------------------------------------------------------
+
+class IndicatoreOut(BaseModel):
+    nome: str
+    valore: float
+    unita: str
+    livello: str
+    spiegazione: str
+
+
+class ConservazioneOut(BaseModel):
+    id: int
+    name: str
+    type: str
+    quality: int
+    price_eur: float | None
+    punteggio: int
+    giudizio: str
+    indicatori: list[IndicatoreOut]
+
+
+class ConservazioneRiga(BaseModel):
+    """Riga sintetica per la vista d'insieme del magazzino."""
+    id: int
+    name: str
+    type: str
+    quality: int
+    price_eur: float | None
+    punteggio: int
+    giudizio: str
+
+
+_CONS_COLS = (
+    "id, name, type, quality, price_eur, free_sulfur_dioxide, "
+    "total_sulfur_dioxide, ph, volatile_acidity"
+)
+
+
+def _conservazione_da_riga(w: dict):
+    return valuta_conservazione(
+        wine_type=w["type"],
+        free_sulfur_dioxide=float(w["free_sulfur_dioxide"]),
+        total_sulfur_dioxide=float(w["total_sulfur_dioxide"]),
+        ph=float(w["ph"]),
+        volatile_acidity=float(w["volatile_acidity"]),
+    )
+
+
+@app.get("/api/conservazione", response_model=list[ConservazioneRiga])
+def lista_conservazione(type: str | None = None, limit: int = 60):
+    """Catalogo ordinato per rischio: i lotti da muovere per primi in cima.
+
+    L'ordinamento avviene in Python e non in SQL perche' il punteggio non e'
+    una colonna del database ma il risultato delle regole enologiche: e' un
+    valore derivato, e replicarlo in SQL significherebbe duplicare la logica
+    in due posti che poi divergono.
+    """
+    if type is not None and type not in ("red", "white"):
+        raise HTTPException(status_code=400, detail="Tipo non valido")
+    limit = max(1, min(limit, 200))
+
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            where = "WHERE type = %s" if type else ""
+            cursor.execute(
+                f"SELECT {_CONS_COLS} FROM wines {where}",
+                (type,) if type else (),
+            )
+            rows = cursor.fetchall()
+            cursor.close()
+    except Exception as e:
+        logger.exception("Errore nel calcolo della conservazione")
+        raise HTTPException(status_code=500, detail="Errore nel calcolo della conservazione") from e
+
+    out = []
+    for w in rows:
+        c = _conservazione_da_riga(w)
+        out.append({
+            "id": w["id"], "name": w["name"], "type": w["type"],
+            "quality": w["quality"], "price_eur": w["price_eur"],
+            "punteggio": c.punteggio, "giudizio": c.giudizio,
+        })
+
+    out.sort(key=lambda r: (r["punteggio"], -r["quality"]))
+    return out[:limit]
+
+
+@app.get("/api/conservazione/{wine_id}", response_model=ConservazioneOut)
+def conservazione_vino(wine_id: int):
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(f"SELECT {_CONS_COLS} FROM wines WHERE id = %s", (wine_id,))
+            w = cursor.fetchone()
+            cursor.close()
+    except Exception as e:
+        logger.exception("Errore nel calcolo della conservazione")
+        raise HTTPException(status_code=500, detail="Errore nel calcolo della conservazione") from e
+
+    if w is None:
+        raise HTTPException(status_code=404, detail=f"Vino con id={wine_id} non trovato")
+
+    c = _conservazione_da_riga(w)
+    return {
+        "id": w["id"], "name": w["name"], "type": w["type"],
+        "quality": w["quality"], "price_eur": w["price_eur"],
+        "punteggio": c.punteggio, "giudizio": c.giudizio,
+        "indicatori": [vars(i) for i in c.indicatori],
+    }
 
 
 class SommelierRequest(BaseModel):
