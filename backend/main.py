@@ -23,6 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
+from src.agent.catalog_tools import ESEGUIBILI, STRUMENTI
 from src.conservation import valuta_conservazione
 from src.importance import NUM as IMPORTANCE_NUM, calcola_importanza
 from src.levers import analizza_leve
@@ -1120,6 +1121,29 @@ def vini_per_profilo(profile_id: int, limit: int = 40):
     return rows
 
 
+class MetricheLLM(BaseModel):
+    """Costo e tempi di una risposta.
+
+    Definita qui, prima di chi la usa, perche' e' condivisa da tutti e tre
+    gli endpoint che chiamano un modello (sommelier RAG, verdetto
+    strutturato, agente sul catalogo).
+
+    I due tempi sono separati di proposito: se domina il recupero si lavora
+    sull'indice, se domina la generazione si agisce su modello, lunghezza
+    della risposta o cache. Aggregati in un numero solo non direbbero dove
+    intervenire.
+
+    Quantizzazione e motori di inferenza ad alto throughput non rientrano in
+    questo progetto: il modello e' ospitato da terzi e non lo serviamo noi.
+    Cio' che possiamo governare e' il budget di token e la latenza percepita.
+    """
+    ms_recupero: int | None = None
+    ms_generazione: int | None = None
+    token_prompt: int | None = None
+    token_risposta: int | None = None
+    modello: str | None = None
+
+
 # --------------------------------------------------------------------------
 # Verdetto di abbinamento: output strutturato e validato
 #
@@ -1317,28 +1341,181 @@ def verdetto_abbinamento(payload: VerdettoRequest):
     )
 
 
+# --------------------------------------------------------------------------
+# SVEVA agente: il modello interroga il catalogo con gli strumenti
+#
+# Il sommelier RAG risponde con conoscenza enologica scritta. Qui la domanda
+# riguarda i DATI della cantina — quali lotti ci sono, a che prezzo, in che
+# stato — che non possono stare nel prompt (migliaia di righe) e che il
+# modello non puo' sapere. Invece di fargliele inventare, gli si danno degli
+# strumenti e si esegue noi cio' che chiede.
+#
+# Il ciclo e': domanda -> il modello chiede uno strumento -> lo eseguiamo ->
+# gli restituiamo il risultato -> ripete o risponde. Il limite di giri e' la
+# protezione essenziale: un modello puo' entrare in un ciclo di chiamate
+# senza mai concludere, e ogni giro costa una chiamata a pagamento.
+# --------------------------------------------------------------------------
+
+MAX_GIRI_AGENTE = 4
+
+PROMPT_AGENTE = (
+    "Ti chiami SVEVA e assisti chi lavora in una piccola cantina. "
+    "Hai a disposizione strumenti per interrogare il catalogo: usali SEMPRE "
+    "quando la domanda riguarda i vini della cantina.\n\n"
+    "REGOLE INDEROGABILI.\n"
+    "1. Non inventare MAI lotti, prezzi, gradazioni o punteggi. Se non li hai "
+    "ottenuti da uno strumento, non li sai: chiamalo.\n"
+    "2. Riporta i numeri esattamente come te li restituiscono gli strumenti, "
+    "senza arrotondarli a piacere.\n"
+    "3. Se uno strumento non restituisce nulla, dillo con chiarezza invece di "
+    "riempire il vuoto: 'in catalogo non ci sono lotti con questi criteri'.\n"
+    "4. Non nominare vitigni, annate o terroir: non sono nei dati.\n"
+    "5. Rispondi in italiano, in modo breve e concreto, come si parla fra "
+    "colleghi in cantina."
+)
+
+
+class PassoAgente(BaseModel):
+    """Un giro del ciclo, esposto all'interfaccia.
+
+    Mostrare i passi non e' un vezzo tecnico: se il modello dice che un lotto
+    costa 12 euro, chi legge deve poter vedere che quel numero viene da una
+    query e non dalla fantasia del modello.
+    """
+    strumento: str
+    argomenti: dict
+    risultati: int | None = None
+
+
+class AgenteRequest(BaseModel):
+    question: str
+
+
+class AgenteResponse(BaseModel):
+    answer: str
+    passi: list[PassoAgente] = []
+    metriche: MetricheLLM | None = None
+
+
+@app.post("/api/agente", response_model=AgenteResponse)
+def agente(payload: AgenteRequest):
+    domanda = payload.question.strip()
+    if not is_meaningful_question(domanda):
+        raise HTTPException(status_code=400, detail="Formula la domanda in modo comprensibile")
+
+    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    model_name = os.getenv("LLM_MODEL", "meta-llama/llama-3.1-8b-instruct")
+    if not api_key or api_key == "metti_qui_la_tua_chiave":
+        raise HTTPException(
+            status_code=503,
+            detail="L'assistente al catalogo richiede una chiave LLM configurata",
+        )
+
+    messaggi = [
+        {"role": "system", "content": PROMPT_AGENTE},
+        {"role": "user", "content": domanda},
+    ]
+    passi: list[dict] = []
+    ms_totali = 0
+    token_prompt = token_risposta = 0
+    modello_usato = model_name
+
+    for _ in range(MAX_GIRI_AGENTE):
+        try:
+            inizio = time.perf_counter()
+            r = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={
+                    "model": model_name,
+                    "max_tokens": 700,
+                    "temperature": 0.3,
+                    "messages": messaggi,
+                    "tools": STRUMENTI,
+                },
+                timeout=60,
+            )
+            r.raise_for_status()
+        except Exception as e:
+            logger.exception("Errore nella chiamata al modello")
+            raise HTTPException(status_code=502, detail=f"Errore nella chiamata: {e}") from e
+
+        ms_totali += int((time.perf_counter() - inizio) * 1000)
+        body = r.json()
+        uso = body.get("usage") or {}
+        token_prompt += uso.get("prompt_tokens") or 0
+        token_risposta += uso.get("completion_tokens") or 0
+        modello_usato = body.get("model", model_name)
+
+        messaggio = body["choices"][0]["message"]
+        chiamate = messaggio.get("tool_calls") or []
+
+        if not chiamate:
+            return {
+                "answer": messaggio.get("content") or "",
+                "passi": passi,
+                "metriche": {
+                    "ms_generazione": ms_totali,
+                    "token_prompt": token_prompt,
+                    "token_risposta": token_risposta,
+                    "modello": modello_usato,
+                },
+            }
+
+        messaggi.append(messaggio)
+
+        for chiamata in chiamate:
+            nome = chiamata["function"]["name"]
+            try:
+                argomenti = json.loads(chiamata["function"].get("arguments") or "{}")
+            except json.JSONDecodeError:
+                argomenti = {}
+
+            funzione = ESEGUIBILI.get(nome)
+            if funzione is None:
+                # Il modello ha nominato uno strumento inesistente. Glielo si
+                # dice come risultato invece di interrompere: spesso al giro
+                # dopo sceglie quello giusto.
+                esito = {"errore": f"Strumento '{nome}' non disponibile."}
+            else:
+                try:
+                    esito = funzione(**argomenti)
+                except TypeError as e:
+                    # Argomenti inventati o mancanti: e' il fallimento piu'
+                    # comune del function calling, e va restituito al modello
+                    # come informazione utile a correggersi.
+                    esito = {"errore": f"Argomenti non validi: {e}"}
+                except Exception as e:
+                    logger.exception("Errore eseguendo lo strumento %s", nome)
+                    esito = {"errore": f"Lo strumento ha fallito: {e}"}
+
+            passi.append({
+                "strumento": nome,
+                "argomenti": argomenti,
+                "risultati": len(esito) if isinstance(esito, list) else None,
+            })
+
+            messaggi.append({
+                "role": "tool",
+                "tool_call_id": chiamata.get("id"),
+                "name": nome,
+                "content": json.dumps(esito, ensure_ascii=False, default=str),
+            })
+
+    # Esaurito il numero di giri senza una risposta finale. Meglio dichiararlo
+    # che restituire il contenuto di un giro intermedio, che sarebbe parziale.
+    raise HTTPException(
+        status_code=504,
+        detail=(
+            f"L'assistente ha usato gli strumenti {MAX_GIRI_AGENTE} volte senza "
+            "arrivare a una risposta. Prova a porre la domanda in modo piu' specifico."
+        ),
+    )
+
+
 class SommelierRequest(BaseModel):
     question: str
     wine_id: int | None = None
-
-
-class MetricheLLM(BaseModel):
-    """Costo e tempi di una risposta.
-
-    I due tempi sono separati di proposito: se domina il recupero si lavora
-    sull'indice, se domina la generazione si agisce su modello, lunghezza
-    della risposta o cache. Aggregati in un numero solo non direbbero dove
-    intervenire.
-
-    Quantizzazione e motori di inferenza ad alto throughput non rientrano in
-    questo progetto: il modello e' ospitato da terzi e non lo serviamo noi.
-    Cio' che possiamo governare e' il budget di token e la latenza percepita.
-    """
-    ms_recupero: int | None = None
-    ms_generazione: int | None = None
-    token_prompt: int | None = None
-    token_risposta: int | None = None
-    modello: str | None = None
 
 
 class SommelierResponse(BaseModel):

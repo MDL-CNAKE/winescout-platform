@@ -326,6 +326,26 @@ export const chiediVerdetto = (wineId: number, piatto: string) =>
     .post<VerdettoResponse>("/api/verdetto", { wine_id: wineId, piatto })
     .then((res) => res.data);
 
+/**
+ * SVEVA agente: il modello interroga il catalogo tramite strumenti.
+ * `passi` espone quali query sono state realmente eseguite, così i numeri
+ * nella risposta sono tracciabili a una richiesta al database.
+ */
+export interface PassoAgente {
+  strumento: string;
+  argomenti: Record<string, unknown>;
+  risultati: number | null;
+}
+
+export interface AgenteResponse {
+  answer: string;
+  passi: PassoAgente[];
+  metriche: MetricheLLM | null;
+}
+
+export const chiediAgente = (question: string) =>
+  api.post<AgenteResponse>("/api/agente", { question }).then((res) => res.data);
+
 export interface PackagingItem {
   id: number;
   name: string;
