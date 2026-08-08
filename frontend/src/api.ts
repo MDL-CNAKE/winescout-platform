@@ -56,10 +56,20 @@ export interface CheaperAlternative extends Recommendation {
   savings_pct: number;
 }
 
+/** Costo e tempi di una risposta: senza misura non c'è ottimizzazione. */
+export interface MetricheLLM {
+  ms_recupero: number | null;
+  ms_generazione: number | null;
+  token_prompt: number | null;
+  token_risposta: number | null;
+  modello: string | null;
+}
+
 export interface SommelierResponse {
   answer: string;
   demo_mode: boolean;
   sources: string[];
+  metriche: MetricheLLM | null;
 }
 
 export const fetchWines = () =>

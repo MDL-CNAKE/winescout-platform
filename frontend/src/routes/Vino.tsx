@@ -25,6 +25,7 @@ import { ValidationNote } from "../components/ValidationNote";
 import { EmptyState } from "../components/EmptyState";
 import { ConservazioneScheda } from "../components/ConservazioneScheda";
 import { LeveScheda } from "../components/LeveScheda";
+import { MetricheRisposta } from "../components/MetricheRisposta";
 import { wineTitle, wineLot, allPairings } from "../lib/wineLabel";
 import { BottleIcon } from "../components/BottleIcon";
 
@@ -368,6 +369,7 @@ function TabSommelier({ wine }: { wine: Wine }) {
             <p className="warning">Modalità demo: API key non configurata, risposta simulata.</p>
           )}
           <p>{mutation.data.answer}</p>
+          <MetricheRisposta metriche={mutation.data.metriche} />
         </div>
       )}
     </>

@@ -1348,6 +1348,44 @@ main .imp-testo {
 .imp-item.trascurabile .imp-barra { background: rgba(244, 236, 226, 0.25); }
 .imp-item.trascurabile .imp-quota { color: rgba(244, 236, 226, 0.45); }
 
+/* --- Metriche della risposta LLM --- */
+.metriche {
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(244, 236, 226, 0.12);
+}
+.metriche-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.75rem;
+}
+.metriche-lista li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+main .metriche-valore {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--gold-light);
+  line-height: 1.1;
+}
+main .metriche-etichetta {
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(244, 236, 226, 0.45);
+}
+main .metriche-modello {
+  margin: 0.7rem 0 0;
+  font-size: 0.7rem;
+  font-family: var(--font-mono, monospace);
+  color: rgba(244, 236, 226, 0.4);
+}
+
 /* --- Spedizioni: sezione in arrivo --- */
 .spedizioni {
   text-align: center;

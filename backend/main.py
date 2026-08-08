@@ -9,6 +9,7 @@ quelle validate nella versione Streamlit.
 """
 import os
 import re
+import time
 import logging
 from contextlib import asynccontextmanager
 
@@ -1122,10 +1123,30 @@ class SommelierRequest(BaseModel):
     wine_id: int | None = None
 
 
+class MetricheLLM(BaseModel):
+    """Costo e tempi di una risposta.
+
+    I due tempi sono separati di proposito: se domina il recupero si lavora
+    sull'indice, se domina la generazione si agisce su modello, lunghezza
+    della risposta o cache. Aggregati in un numero solo non direbbero dove
+    intervenire.
+
+    Quantizzazione e motori di inferenza ad alto throughput non rientrano in
+    questo progetto: il modello e' ospitato da terzi e non lo serviamo noi.
+    Cio' che possiamo governare e' il budget di token e la latenza percepita.
+    """
+    ms_recupero: int | None = None
+    ms_generazione: int | None = None
+    token_prompt: int | None = None
+    token_risposta: int | None = None
+    modello: str | None = None
+
+
 class SommelierResponse(BaseModel):
     answer: str
     demo_mode: bool
     sources: list[str] = []
+    metriche: MetricheLLM | None = None
 
 
 @app.post("/api/sommelier", response_model=SommelierResponse)
@@ -1169,11 +1190,14 @@ def ask_sommelier(payload: SommelierRequest):
     retriever = state.get("retriever")
     rag_context = ""
     sources: list[str] = []
+    ms_recupero: int | None = None
     if retriever is not None and payload.question.strip():
+        inizio_recupero = time.perf_counter()
         retrieved = retriever.search(payload.question, top_k=3)
         sources = retrieved
         if retrieved:
             rag_context = "\n\n" + retriever.build_context(payload.question, top_k=3)
+        ms_recupero = int((time.perf_counter() - inizio_recupero) * 1000)
 
     if not api_key or api_key == "metti_qui_la_tua_chiave":
         if wine_row is not None:
@@ -1189,9 +1213,15 @@ def ask_sommelier(payload: SommelierRequest):
                 "Seleziona un vino del catalogo per vedere un abbinamento reale, oppure "
                 "configura OPENROUTER_API_KEY nel file .env per risposte elaborate dall'IA."
             )
-        return {"answer": answer, "demo_mode": True, "sources": sources}
+        return {
+            "answer": answer,
+            "demo_mode": True,
+            "sources": sources,
+            "metriche": {"ms_recupero": ms_recupero},
+        }
 
     try:
+        inizio_generazione = time.perf_counter()
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
@@ -1210,8 +1240,35 @@ def ask_sommelier(payload: SommelierRequest):
             timeout=60,
         )
         response.raise_for_status()
-        answer = response.json()["choices"][0]["message"]["content"]
-        return {"answer": answer, "demo_mode": False, "sources": sources}
+        ms_generazione = int((time.perf_counter() - inizio_generazione) * 1000)
+
+        body = response.json()
+        answer = body["choices"][0]["message"]["content"]
+
+        # `usage` e' opzionale nella risposta: alcuni modelli non lo
+        # restituiscono, quindi non si da' per scontato.
+        uso = body.get("usage") or {}
+        metriche = {
+            "ms_recupero": ms_recupero,
+            "ms_generazione": ms_generazione,
+            "token_prompt": uso.get("prompt_tokens"),
+            "token_risposta": uso.get("completion_tokens"),
+            # Il modello effettivo puo' differire da quello richiesto: con gli
+            # alias OpenRouter puo' instradare su una variante diversa.
+            "modello": body.get("model", model_name),
+        }
+        logger.info(
+            "sommelier | recupero %sms | generazione %sms | token %s+%s | %s",
+            ms_recupero, ms_generazione,
+            metriche["token_prompt"], metriche["token_risposta"], metriche["modello"],
+        )
+
+        return {
+            "answer": answer,
+            "demo_mode": False,
+            "sources": sources,
+            "metriche": metriche,
+        }
     except Exception as e:
         logger.exception("Errore nella chiamata all'LLM")
         raise HTTPException(status_code=502, detail=f"Errore nella chiamata al Sommelier: {e}") from e

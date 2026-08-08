@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { fetchWines, askSommelier } from "../api";
 import { RobotSommelierIcon } from "../components/RobotSommelierIcon";
+import { MetricheRisposta } from "../components/MetricheRisposta";
 
 export function Sommelier() {
   const { data: wines } = useQuery({ queryKey: ["wines"], queryFn: fetchWines });
@@ -86,6 +87,7 @@ export function Sommelier() {
           )}
           <p><strong>Risposta del Sommelier:</strong></p>
           <p>{mutation.data.answer}</p>
+          <MetricheRisposta metriche={mutation.data.metriche} />
         </div>
       )}
     </section>
