@@ -428,6 +428,71 @@ misure analitiche.
 - I valori si riferiscono a questo modello su questo dataset: non sono una
   legge generale dell'enologia.
 
+## Feature engineering: esperimento con esito negativo
+
+Il progetto calcola diverse grandezze derivate per le regole enologiche, in
+particolare l'**SO₂ molecolare** — la frazione di solforosa realmente attiva,
+`SO₂ libera / (1 + 10^(pH − 1,81))`. Prese singolarmente, SO₂ libera e pH
+pesano poco nella previsione (10,5% e 3,6% di importanza per permutazione);
+combinate secondo la chimica producono la grandezza che un enologo osserva
+davvero. Era ragionevole attendersi che, fornita già calcolata al modello,
+migliorasse la stima della qualità.
+
+### Il risultato
+
+| Configurazione | CV R² | Test R² |
+|---|---:|---:|
+| Colonne grezze | 0,5000 | 0,5572 |
+| + tutte e sei le derivate | 0,5040 | 0,5556 |
+| + solo SO₂ molecolare | 0,4985 | 0,5559 |
+| + SO₂ molecolare e quota libera | 0,5001 | 0,5517 |
+
+Nessun miglioramento. Le differenze sono nell'ordine dei millesimi, cambiano
+segno fra cross-validation e test set, e la **dispersione fra i fold**
+(0,005–0,008) è più ampia dello scarto fra le medie: è rumore.
+
+Lo stesso vale per la regressione lineare (0,2924 → 0,2958), usata come
+controllo: un modello lineare non può rappresentare rapporti ed esponenziali,
+quindi avrebbe dovuto beneficiarne più di un albero. Non è successo, il che
+esclude la spiegazione "il RandomForest ci arriva comunque da solo".
+
+### Perché
+
+Non per ridondanza. Il denominatore varia da 9,1 a 159,5 lungo il catalogo,
+quindi l'SO₂ molecolare non è un riscalamento della SO₂ libera: correlano
+0,854, non 1.
+
+Il motivo è che **quella variabile non ha relazione con il target**:
+
+| Variabile | Correlazione con `quality` |
+|---|---:|
+| Alcol | +0,444 |
+| Acidità volatile | −0,266 |
+| SO₂ libera | +0,055 |
+| SO₂ molecolare | +0,023 |
+
+L'SO₂ molecolare governa la **tenuta nel tempo** — ossidazione,
+rifermentazione — mentre `quality` è un punteggio **sensoriale**: quanto il
+vino piace all'assaggio adesso. Sono fenomeni distinti, e un vino può essere
+ben protetto e mediocre, oppure fragile ed eccellente. Lo conferma dall'altro
+lato la scorrelazione già misurata (0,163) fra indice di conservazione e
+punteggio di qualità.
+
+La variabile è quindi corretta, ma per un altro obiettivo — ed è esattamente
+dove viene impiegata, in `src/conservation.py`.
+
+Fa eccezione `acidita_totale_stim`, che è un doppione autentico: correla 0,994
+con l'acidità fissa.
+
+### Cosa se ne ricava
+
+L'ingegnerizzazione delle variabili non si giudica sulla bontà della formula ma
+sulla **pertinenza al fenomeno che il target misura**. Una grandezza corretta,
+motivata e chimicamente fondata può non spostare nulla, se descrive qualcosa
+che il target non registra.
+
+L'esperimento è riproducibile: `python src/models/feature_experiment.py`.
+
 ## Assenza dell'informazione sul vitigno
 
 Il dataset UCI Wine Quality (rossi e bianchi "Vinho Verde" portoghesi) non

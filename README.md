@@ -124,6 +124,7 @@ e imposta `OPENROUTER_API_KEY`. Senza chiave l'app funziona comunque in modalita
     |   |-- rag/                      # Knowledge base sensoriale, indice e recupero ibrido
     |   `-- models/
     |       |-- compare_models.py     # Confronto RandomForest/GradientBoosting/LinearRegression, 5-fold CV
+    |       |-- feature_experiment.py # Le variabili derivate migliorano il modello? (esito negativo)
     |       |-- train.py              # Training finale: Pipeline sklearn, CV + test set, joblib
     |       `-- recommender.py        # WineRecommender: content-based con similarita' coseno
     |
@@ -168,6 +169,22 @@ Confronto tra 3 algoritmi con 5-fold cross-validation (`compare_models.py`):
 
 RandomForestRegressor scelto per le metriche migliori su tutte e tre le dimensioni.
 Modello finale valutato anche su un test set indipendente (20%): RMSE 0.569, R2 0.561.
+
+### Feature engineering: provato, non adottato
+
+Le grandezze derivate calcolate per le regole enologiche — in particolare l'SO2
+molecolare, ricavata da SO2 libera e pH — sono state provate anche come feature
+del modello. **Non migliorano la previsione**: le differenze restano entro la
+dispersione fra i fold, e lo stesso vale sulla regressione lineare usata come
+controllo.
+
+Il motivo e' misurabile: l'SO2 molecolare correla +0,023 con `quality`. Governa
+la tenuta nel tempo, mentre il target e' un punteggio sensoriale — due fenomeni
+diversi. La variabile e' corretta ma per un altro obiettivo, ed e' li' che viene
+usata (indice di conservazione).
+
+Esperimento riproducibile: `python src/models/feature_experiment.py`.
+Analisi completa in [docs/model_limitations.md](docs/model_limitations.md).
 
 ## Interfaccia
 
