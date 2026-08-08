@@ -478,8 +478,36 @@ def _bottle_format(name: str, quality: int) -> str:
 
 
 def _cap_type(wine_type: str, quality: int) -> str:
-    if wine_type == "red" or quality >= 7:
+    """Il tappo segue la DURATA prevista del vino, non il colore.
+
+    La regola precedente diceva "rosso oppure qualita' alta -> sughero", e
+    produceva un risultato indifendibile: un rosso di qualita' 3 riceveva un
+    tappo in sughero naturale su una mignon da 375ml con etichetta adesiva,
+    cioe' la chiusura piu' costosa sulla confezione piu' economica. Il colore
+    non dice nulla su quanto un vino debba durare.
+
+    Ora decide la sola qualita', che nel modello e' il miglior indicatore
+    disponibile di tenuta nel tempo:
+
+      - SUGHERO NATURALE (>= 7): l'unico che consente l'evoluzione in
+        bottiglia. Ha senso solo dove c'e' qualcosa da far evolvere, e porta
+        con se' il rischio di sentore di tappo, accettabile su un vino di
+        pregio, assurdo su uno da bere subito.
+      - SINTETICO (5-6): aspetto simile al sughero, costo molto inferiore,
+        tenuta garantita 2-3 anni. E' la finestra giusta per la fascia media.
+      - VITE (<= 4): il piu' economico, tenuta ottima, nessun rischio di
+        sentore di tappo. Il suo unico limite - non lascia evolvere il vino -
+        e' irrilevante su un lotto destinato al consumo immediato.
+
+    `wine_type` resta nella firma per compatibilita' con i chiamanti, ma non
+    partecipa piu' alla decisione: una regola sul colore andrebbe giustificata
+    con un dato che nel dataset non c'e'.
+    """
+    del wine_type
+    if quality >= 7:
         return "Tappo in sughero naturale"
+    if quality >= 5:
+        return "Tappo sintetico"
     return "Tappo a vite"
 
 

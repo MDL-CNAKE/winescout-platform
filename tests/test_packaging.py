@@ -99,23 +99,47 @@ class TestFormatoETappo:
     def test_mignon_per_i_peggiori(self):
         assert _bottle_format("x", 4) == "Mignon 375ml"
 
-    def test_bianco_di_pregio_prende_il_sughero(self):
+    def test_sughero_solo_sopra_la_soglia(self):
         assert _cap_type("white", 7) == "Tappo in sughero naturale"
-        assert _cap_type("white", 6) == "Tappo a vite"
+        assert _cap_type("red", 7) == "Tappo in sughero naturale"
 
-    def test_rosso_scadente_prende_comunque_il_sughero(self):
-        """Comportamento attuale, fissato qui perche' e' discutibile.
+    def test_fascia_media_prende_il_sintetico(self):
+        """Aspetto simile al sughero, costo molto inferiore, tenuta 2-3 anni:
+        la finestra giusta per un vino che non deve evolvere ma nemmeno
+        sembrare da discount."""
+        assert _cap_type("red", 6) == "Tappo sintetico"
+        assert _cap_type("white", 5) == "Tappo sintetico"
 
-        Un rosso di qualita' 3 riceve mignon da 375ml, etichetta adesiva
-        colorata e tappo in sughero naturale: il sughero costa piu' di tutto
-        il resto della confezione. La regola dice 'rosso = sughero' senza
-        guardare la qualita'.
+    def test_qualita_bassa_prende_la_vite(self):
+        assert _cap_type("red", 4) == "Tappo a vite"
+        assert _cap_type("white", 3) == "Tappo a vite"
 
-        Il test non lo corregge - non e' una decisione tecnica ma commerciale,
-        e la fa il titolare - ma lo rende visibile invece di lasciarlo
-        sepolto in un `or`.
+    @pytest.mark.parametrize("quality", QUALITA)
+    def test_il_colore_non_influenza_il_tappo(self, quality):
+        """L'anomalia che questa regola e' nata per eliminare.
+
+        Prima un rosso di qualita' 3 riceveva sughero naturale su una mignon
+        con etichetta adesiva: la chiusura piu' costosa sulla confezione piu'
+        economica, perche' la regola guardava il colore prima della qualita'.
+
+        Il test scorre tutta la scala e pretende che rosso e bianco ricevano
+        sempre lo stesso tappo. Se qualcuno reintroducesse una regola sul
+        colore, fallirebbe qui - ed e' bene che debba giustificarla, perche'
+        nel dataset non c'e' nulla che la sostenga.
         """
-        assert _cap_type("red", 3) == "Tappo in sughero naturale"
+        assert _cap_type("red", quality) == _cap_type("white", quality)
+
+    def test_il_sughero_non_finisce_mai_su_una_mignon(self):
+        """Coerenza fra le regole, non dentro una sola regola.
+
+        La mignon va ai lotti di qualita' <= 4, il sughero da 7 in su: le due
+        soglie non possono incrociarsi. E' il tipo di incoerenza che nessun
+        test sulla singola funzione vedrebbe, perche' ciascuna presa da sola
+        e' corretta.
+        """
+        for q in QUALITA:
+            if _bottle_format("x", q) == "Mignon 375ml":
+                assert _cap_type("red", q) != "Tappo in sughero naturale"
 
 
 # ---------------------------------------------------------------------------
