@@ -1579,3 +1579,125 @@ main .empty-state-title {
   text-align: center;
 }
 
+/* --------------------------------------------------------------------
+   Verdetto di abbinamento strutturato
+
+   L'esito e' una parola sola su scala chiusa: merita peso tipografico,
+   perche' e' l'unica cosa che serve leggere di corsa. Motivazione e dato
+   citato stanno sotto, per chi vuole controllare il ragionamento.
+   Il colore accompagna il testo ma non lo sostituisce: la parola resta
+   leggibile anche a chi non distingue verde e rosso.
+   -------------------------------------------------------------------- */
+.sub-heading {
+  margin: 1.6rem 0 0.6rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bordeaux-dark, #6b1f2a);
+}
+.sub-heading:first-child { margin-top: 0; }
+
+.verdetto-form {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+.verdetto-form input {
+  flex: 1 1 18rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #d6cfc4;
+  border-radius: 6px;
+  font: inherit;
+}
+.verdetto-form button { flex: 0 0 auto; }
+
+.verdetto-esito {
+  margin: 0 0 0.6rem;
+  font-family: "Righteous", system-ui, sans-serif;
+  font-size: 1.5rem;
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+}
+.verdetto-ottimo { color: #1f6f43; }
+.verdetto-buono { color: #3d7a4e; }
+.verdetto-accettabile { color: #9a6b12; }
+.verdetto-sconsigliato { color: var(--bordeaux, #6d1b2f); }
+
+.verdetto-dato,
+.verdetto-alternativa {
+  margin: 0.7rem 0 0;
+  padding-left: 0.8rem;
+  border-left: 3px solid #e2dbd0;
+  font-size: 0.92rem;
+}
+.verdetto-dato-etichetta {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a8177;
+  margin-bottom: 0.15rem;
+}
+
+
+/* --------------------------------------------------------------------
+   Verdetto di abbinamento strutturato
+
+   L'esito e' una parola sola su scala chiusa: merita peso tipografico,
+   perche' e' l'unica cosa che serve leggere di corsa. Motivazione e dato
+   citato stanno sotto, per chi vuole controllare il ragionamento.
+   Il colore accompagna il testo ma non lo sostituisce: la parola resta
+   leggibile anche a chi non distingue verde e rosso.
+   -------------------------------------------------------------------- */
+.sub-heading {
+  margin: 1.6rem 0 0.6rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bordeaux-dark, #6b1f2a);
+}
+.sub-heading:first-child { margin-top: 0; }
+
+.verdetto-form {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+.verdetto-form input {
+  flex: 1 1 18rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #d6cfc4;
+  border-radius: 6px;
+  font: inherit;
+}
+.verdetto-form button { flex: 0 0 auto; }
+
+.verdetto-esito {
+  margin: 0 0 0.6rem;
+  font-family: "Righteous", system-ui, sans-serif;
+  font-size: 1.5rem;
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+}
+.verdetto-ottimo { color: #1f6f43; }
+.verdetto-buono { color: #3d7a4e; }
+.verdetto-accettabile { color: #9a6b12; }
+.verdetto-sconsigliato { color: var(--bordeaux, #6d1b2f); }
+
+.verdetto-dato,
+.verdetto-alternativa {
+  margin: 0.7rem 0 0;
+  padding-left: 0.8rem;
+  border-left: 3px solid #e2dbd0;
+  font-size: 0.92rem;
+}
+.verdetto-dato-etichetta {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a8177;
+  margin-bottom: 0.15rem;
+}

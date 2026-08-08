@@ -9,8 +9,10 @@ quelle validate nella versione Streamlit.
 """
 import os
 import re
+import json
 import time
 import logging
+from typing import Literal
 from contextlib import asynccontextmanager
 
 import joblib
@@ -19,7 +21,7 @@ import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from src.conservation import valuta_conservazione
 from src.importance import NUM as IMPORTANCE_NUM, calcola_importanza
@@ -1116,6 +1118,203 @@ def vini_per_profilo(profile_id: int, limit: int = 40):
             else None
         )
     return rows
+
+
+# --------------------------------------------------------------------------
+# Verdetto di abbinamento: output strutturato e validato
+#
+# Il sommelier in chat restituisce testo libero, che va bene per una
+# conversazione ma non per un dato su cui costruire interfaccia o decisioni.
+# Qui il modello deve produrre un oggetto conforme a uno schema: il giudizio
+# sta su una scala chiusa (quindi ordinabile e filtrabile) e il campo
+# `dato_citato` rende VERIFICABILE l'ancoraggio ai dati, che nel resto del
+# progetto e' soltanto una regola nel prompt — se il modello non lo compila,
+# non si e' ancorato.
+# --------------------------------------------------------------------------
+
+GIUDIZI = ("ottimo", "buono", "accettabile", "sconsigliato")
+
+
+class VerdettoAbbinamento(BaseModel):
+    """Schema che l'LLM deve rispettare. Pydantic lo fa rispettare davvero."""
+    giudizio: Literal["ottimo", "buono", "accettabile", "sconsigliato"]
+    motivazione: str = Field(max_length=400)
+    dato_citato: str = Field(max_length=120)
+    profilo_alternativo: str | None = Field(default=None, max_length=200)
+
+    @field_validator("motivazione", "dato_citato")
+    @classmethod
+    def non_vuoto(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("campo obbligatorio vuoto")
+        return v.strip()
+
+
+class VerdettoRequest(BaseModel):
+    wine_id: int
+    piatto: str
+
+
+class VerdettoResponse(BaseModel):
+    verdetto: VerdettoAbbinamento
+    tentativi: int
+    metriche: MetricheLLM | None = None
+
+
+PROMPT_VERDETTO = (
+    "Sei SVEVA, sommelier virtuale. Valuti l'abbinamento fra un vino e un "
+    "piatto e rispondi ESCLUSIVAMENTE con un oggetto JSON, senza testo prima "
+    "o dopo, senza blocchi di codice.\n\n"
+    "Schema richiesto:\n"
+    '{\n'
+    '  "giudizio": uno fra "ottimo", "buono", "accettabile", "sconsigliato",\n'
+    '  "motivazione": massimo 2 frasi sul perche\',\n'
+    '  "dato_citato": UN dato reale del vino a sostegno, fra quelli forniti '
+    '(es. "acidita\' volatile 0,28 g/L" o "11,2% vol"),\n'
+    '  "profilo_alternativo": se il giudizio non e\' "ottimo" o "buono", che '
+    'tipo di vino sarebbe piu\' indicato; altrimenti null\n'
+    '}\n\n'
+    "REGOLE. Valuta con onesta': se l'abbinamento non funziona scrivilo, non "
+    "assecondare. Il campo dato_citato deve contenere un valore realmente "
+    "presente fra quelli che ti vengono forniti, mai inventato. Non nominare "
+    "vitigni, annate, tannini o terroir: non sono nei dati."
+)
+
+
+def _estrai_json(testo: str) -> dict:
+    """Isola l'oggetto JSON anche quando il modello lo circonda di testo.
+
+    Nonostante l'istruzione, i modelli spesso incorniciano la risposta con
+    ```json ... ``` o con una frase di cortesia. Invece di fallire subito si
+    cerca il primo oggetto bilanciato: e' un recupero legittimo, non una
+    scorciatoia, perche' il contenuto resta quello prodotto dal modello.
+    """
+    inizio = testo.find("{")
+    fine = testo.rfind("}")
+    if inizio == -1 or fine == -1 or fine < inizio:
+        raise ValueError("nessun oggetto JSON nella risposta")
+    return json.loads(testo[inizio:fine + 1])
+
+
+@app.post("/api/verdetto", response_model=VerdettoResponse)
+def verdetto_abbinamento(payload: VerdettoRequest):
+    piatto = payload.piatto.strip()
+    if not is_meaningful_question(piatto):
+        raise HTTPException(status_code=400, detail="Descrivi il piatto in modo comprensibile")
+
+    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    model_name = os.getenv("LLM_MODEL", "meta-llama/llama-3.1-8b-instruct")
+    if not api_key or api_key == "metti_qui_la_tua_chiave":
+        raise HTTPException(
+            status_code=503,
+            detail="Il verdetto strutturato richiede una chiave LLM configurata",
+        )
+
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT name, type, alcohol, ph, residual_sugar, fixed_acidity, "
+                "volatile_acidity, sulphates, quality, food_pairing "
+                "FROM wines WHERE id = %s",
+                (payload.wine_id,),
+            )
+            w = cursor.fetchone()
+            cursor.close()
+    except Exception as e:
+        logger.exception("Errore nel recupero del vino")
+        raise HTTPException(status_code=500, detail="Errore nel recupero del vino") from e
+
+    if w is None:
+        raise HTTPException(status_code=404, detail=f"Vino con id={payload.wine_id} non trovato")
+
+    dati_vino = (
+        f"Vino: {w['name']} ({'rosso' if w['type'] == 'red' else 'bianco'}). "
+        f"Dati disponibili — alcol {w['alcohol']}% vol; pH {w['ph']}; "
+        f"zucchero residuo {w['residual_sugar']} g/L; acidita' fissa {w['fixed_acidity']} g/L; "
+        f"acidita' volatile {w['volatile_acidity']} g/L; solfati {w['sulphates']} g/L; "
+        f"qualita' {int(w['quality'])}/10. "
+        f"Abbinamento suggerito dalle regole del sistema: {w['food_pairing']}."
+    )
+    richiesta = f"{dati_vino}\n\nPiatto da valutare: {piatto}"
+
+    messaggi = [
+        {"role": "system", "content": PROMPT_VERDETTO},
+        {"role": "user", "content": richiesta},
+    ]
+
+    ms_totali = 0
+    token_prompt = token_risposta = 0
+    modello_usato = model_name
+    ultimo_errore = ""
+    grezzo = ""
+
+    # Due tentativi: al secondo si riporta al modello l'errore ricevuto, che
+    # e' molto piu' efficace di ripetere la stessa richiesta identica.
+    for tentativo in (1, 2):
+        try:
+            inizio = time.perf_counter()
+            r = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={
+                    "model": model_name,
+                    "max_tokens": 500,
+                    # Temperatura bassa: qui non serve varieta' espressiva ma
+                    # aderenza a uno schema.
+                    "temperature": 0.2,
+                    "messages": messaggi,
+                },
+                timeout=60,
+            )
+            r.raise_for_status()
+            ms_totali += int((time.perf_counter() - inizio) * 1000)
+
+            body = r.json()
+            uso = body.get("usage") or {}
+            token_prompt += uso.get("prompt_tokens") or 0
+            token_risposta += uso.get("completion_tokens") or 0
+            modello_usato = body.get("model", model_name)
+
+            grezzo = body["choices"][0]["message"]["content"]
+            verdetto = VerdettoAbbinamento.model_validate(_estrai_json(grezzo))
+
+            return {
+                "verdetto": verdetto,
+                "tentativi": tentativo,
+                "metriche": {
+                    "ms_generazione": ms_totali,
+                    "token_prompt": token_prompt,
+                    "token_risposta": token_risposta,
+                    "modello": modello_usato,
+                },
+            }
+
+        except (ValueError, ValidationError, json.JSONDecodeError, KeyError) as e:
+            # Output non conforme: si ritenta una volta sola, dicendo al
+            # modello cosa non andava.
+            ultimo_errore = str(e)
+            logger.warning("Verdetto non conforme (tentativo %s): %s", tentativo, ultimo_errore)
+            messaggi = messaggi + [
+                {"role": "assistant", "content": grezzo},
+                {
+                    "role": "user",
+                    "content": (
+                        f"La risposta non rispetta lo schema: {ultimo_errore}. "
+                        "Rispondi di nuovo con il solo oggetto JSON valido, "
+                        "senza testo attorno."
+                    ),
+                },
+            ]
+        except Exception as e:
+            logger.exception("Errore nella chiamata al modello")
+            raise HTTPException(status_code=502, detail=f"Errore nella chiamata: {e}") from e
+
+    # Meglio dichiarare il fallimento che restituire un oggetto incompleto.
+    raise HTTPException(
+        status_code=502,
+        detail=f"Il modello non ha prodotto un verdetto valido dopo due tentativi ({ultimo_errore})",
+    )
 
 
 class SommelierRequest(BaseModel):

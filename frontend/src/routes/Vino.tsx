@@ -26,6 +26,7 @@ import { EmptyState } from "../components/EmptyState";
 import { ConservazioneScheda } from "../components/ConservazioneScheda";
 import { LeveScheda } from "../components/LeveScheda";
 import { MetricheRisposta } from "../components/MetricheRisposta";
+import { VerdettoAbbinamentoScheda } from "../components/VerdettoAbbinamentoScheda";
 import { wineTitle, wineLot, allPairings } from "../lib/wineLabel";
 import { BottleIcon } from "../components/BottleIcon";
 
@@ -343,6 +344,13 @@ function TabSommelier({ wine }: { wine: Wine }) {
 
   return (
     <>
+      {/* Prima la valutazione strutturata: risponde alla domanda operativa
+          "questo piatto ci sta o no" con un esito leggibile a colpo d'occhio.
+          La conversazione libera resta sotto, per tutto il resto. */}
+      <h4 className="sub-heading">Valuta un abbinamento</h4>
+      <VerdettoAbbinamentoScheda wineId={wine.id} />
+
+      <h4 className="sub-heading">Chiedi a SVEVA</h4>
       <p className="hint">
         La risposta userà i dati reali di <strong>{wine.name}</strong> come contesto.
       </p>

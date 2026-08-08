@@ -303,6 +303,29 @@ export const askSommelier = (question: string, wineId: number | null) =>
     .post<SommelierResponse>("/api/sommelier", { question, wine_id: wineId })
     .then((res) => res.data);
 
+/**
+ * Verdetto di abbinamento: l'LLM non risponde a testo libero ma compila uno
+ * schema. Il giudizio sta su una scala chiusa, quindi l'interfaccia puo'
+ * renderlo graficamente invece di stampare un paragrafo.
+ */
+export interface VerdettoAbbinamento {
+  giudizio: "ottimo" | "buono" | "accettabile" | "sconsigliato";
+  motivazione: string;
+  dato_citato: string;
+  profilo_alternativo: string | null;
+}
+
+export interface VerdettoResponse {
+  verdetto: VerdettoAbbinamento;
+  tentativi: number;
+  metriche: MetricheLLM | null;
+}
+
+export const chiediVerdetto = (wineId: number, piatto: string) =>
+  api
+    .post<VerdettoResponse>("/api/verdetto", { wine_id: wineId, piatto })
+    .then((res) => res.data);
+
 export interface PackagingItem {
   id: number;
   name: string;
