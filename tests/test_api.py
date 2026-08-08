@@ -85,3 +85,43 @@ def test_cheaper_alternative_empty_list(client):
     response = client.get("/api/recommend/1/cheaper")
     assert response.status_code == 200
     assert response.json() == []
+
+
+# ---------------------------------------------------------------------------
+# Il filtro anti-gibberish e' collegato agli endpoint?
+#
+# I test in tests/test_meaningful_question.py verificano la funzione. Questi
+# verificano una cosa diversa e altrettanto necessaria: che sia effettivamente
+# applicata. Una funzione corretta ma non richiamata da un endpoint non
+# protegge nulla, e nessun test unitario se ne accorgerebbe.
+#
+# Sono i due endpoint che non dipendono dall'indice RAG: il filtro scatta
+# PRIMA di qualsiasi chiamata esterna o controllo della chiave, quindi il
+# rifiuto si osserva anche senza LLM configurato. Che sia il primo controllo
+# e' il punto: se scattasse dopo, avremmo gia' speso la chiamata.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("spazzatura", ["qwerty", "kkkkkkkk", "12345", "..."])
+def test_verdetto_rifiuta_gibberish(client, spazzatura):
+    response = client.post(
+        "/api/verdetto", json={"wine_id": 1, "piatto": spazzatura}
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.parametrize("spazzatura", ["asdfgh", "jkljkl", "aaaa"])
+def test_agente_rifiuta_gibberish(client, spazzatura):
+    response = client.post("/api/agente", json={"question": spazzatura})
+    assert response.status_code == 400
+
+
+def test_verdetto_accetta_piatto_di_una_parola(client):
+    """Il caso che il filtro precedente sbagliava.
+
+    Senza chiave LLM configurata la risposta attesa e' 503 (servizio non
+    disponibile), NON 400 (domanda non valida): significa che "ndole" ha
+    superato il filtro ed e' stata fermata piu' avanti, per un motivo
+    diverso. Distinguere i due codici e' esattamente il punto del test.
+    """
+    response = client.post("/api/verdetto", json={"wine_id": 1, "piatto": "ndole"})
+    assert response.status_code != 400

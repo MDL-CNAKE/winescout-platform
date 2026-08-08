@@ -522,44 +522,96 @@ def get_packaging():
 
 
 NONSENSE_REPLY = (
-    "Non ho capito la domanda. Chiedimi pure un consiglio o un abbinamento "
-    "per questo vino."
+    "Non ho capito. Scrivi il nome di un piatto (anche solo quello) oppure "
+    "una domanda sul vino."
 )
 
 _WORD_RE = re.compile(r"[a-zàèéìòùáíóúäëïöü]{2,}", re.IGNORECASE)
 _VOWEL_RE = re.compile(r"[aeiouàèéìòùáíóúäëïöü]", re.IGNORECASE)
+_LETTERA_RE = re.compile(r"[a-zàèéìòùáíóúäëïöü]", re.IGNORECASE)
+
+# Sequenze di tasti adiacenti. Chi pesta la tastiera segue le file, e questo
+# e' l'indizio piu' netto che distingue "qwerty" da una parola vera: nessuna
+# lingua produce quelle successioni.
+_SEQUENZE_TASTIERA = (
+    "qwert", "werty", "ertyu", "rtyui", "tyuio", "yuiop",
+    "asdfg", "sdfgh", "dfghj", "fghjk", "ghjkl",
+    "zxcvb", "xcvbn", "cvbnm",
+    "qwer", "asdf", "zxcv", "hjkl", "1234", "abcdef",
+)
+
+# Soglia sulla lunghezza massima di consonanti consecutive. L'italiano non
+# supera i tre ("sgr", "scr", "ngh"); il tedesco e alcune lingue africane
+# arrivano a quattro. Cinque e' oltre qualsiasi lingua plausibile e resta
+# invece tipico del pestare tasti.
+MAX_CONSONANTI_CONSECUTIVE = 5
 
 
 def is_meaningful_question(text: str) -> bool:
-    """Filtro anti-gibberish: blocca 'kkkk', stringhe troppo corte o senza
-    parole plausibili PRIMA di chiamare l'LLM.
+    """Filtro anti-gibberish davanti a ogni chiamata LLM.
 
-    Senza questo controllo il modello, avendo in contesto i dati del vino
-    selezionato, tende a "riempire il vuoto" generando comunque una scheda
-    di degustazione anche quando l'utente non ha chiesto nulla di sensato.
-    Non e' un'analisi linguistica completa (per quella servirebbe un
-    modello), ma intercetta i casi piu' evidenti a costo zero.
+    PERCHE' ESISTE. Un modello con in contesto i dati di un vino non risponde
+    "non capisco" davanti a caratteri casuali: riempie il vuoto generando una
+    scheda di degustazione plausibile. Il filtro intercetta il caso prima di
+    spendere una chiamata a pagamento su una domanda che non esiste.
+
+    QUALE ERRORE SI PREFERISCE. Un'euristica sbaglia in due modi opposti, e
+    non sono equivalenti. Lasciar passare del gibberish costa una chiamata:
+    fastidioso, misurabile, senza conseguenze per chi usa il sistema.
+    Rifiutare una domanda vera costa un utente che non capisce perche' viene
+    respinto e non sa cosa fare diversamente. Il filtro e' quindi tarato
+    permissivo: nel dubbio, passa.
+
+    COSA E' CAMBIATO. La prima versione pretendeva almeno 8 caratteri e 2
+    parole. Bloccava "ndole", "carbonara", "pesce?" — cioe' il modo piu'
+    naturale di chiedere un abbinamento, il nome del piatto e basta. Ed era
+    un fallimento concentrato proprio sui piatti brevi e non italiani, gli
+    stessi che il retrieval ibrido esiste per gestire: due difese contro il
+    bias culturale, e la prima annullava la seconda.
+
+    Le soglie di lunghezza sono state sostituite da indizi che distinguono
+    davvero il gibberish: assenza di vocali, sequenze di tasti adiacenti,
+    grovigli di consonanti impossibili in qualsiasi lingua.
     """
     clean = text.strip()
-    if len(clean) < 8:
+    if len(clean) < 3:
         return False
 
-    compact = re.sub(r"\s+", "", clean)
-    # Un solo carattere ripetuto: "kkkkkkkk", "aaaaaaaa".
-    if len(set(compact.lower())) <= 2:
+    minuscolo = clean.lower()
+
+    # Serve almeno una lettera: "12345" o "!!!" non sono domande.
+    if not _LETTERA_RE.search(clean):
         return False
 
-    words = _WORD_RE.findall(clean)
-    if len(words) < 2:
+    # Nessuna vocale: "jkljkl", "zzz", "brrr". In italiano non esistono
+    # parole senza vocali.
+    if not _VOWEL_RE.search(clean):
         return False
 
-    # Parole plausibili: contengono almeno una vocale e non sono una sola
-    # lettera ripetuta.
-    plausible = [
-        w for w in words
-        if _VOWEL_RE.search(w) and len(set(w.lower())) > 1
-    ]
-    return len(plausible) >= 2
+    compact = re.sub(r"\s+", "", minuscolo)
+
+    # Un solo carattere ripetuto: "kkkkkkkk", "aaaa".
+    if len(set(compact)) <= 2:
+        return False
+
+    # Sequenze di tasti adiacenti.
+    if any(seq in compact for seq in _SEQUENZE_TASTIERA):
+        return False
+
+    # Grovigli di consonanti: si valuta parola per parola, altrimenti la fine
+    # di una parola e l'inizio della successiva formerebbero falsi grovigli
+    # ("con sfortuna" darebbe "nsf...").
+    for parola in _WORD_RE.findall(minuscolo):
+        run = 0
+        for ch in parola:
+            if _VOWEL_RE.match(ch):
+                run = 0
+            else:
+                run += 1
+                if run >= MAX_CONSONANTI_CONSECUTIVE:
+                    return False
+
+    return True
 
 
 @app.get("/api/packaging/{wine_id}", response_model=PackagingItem)
