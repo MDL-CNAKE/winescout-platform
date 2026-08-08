@@ -10,11 +10,49 @@ import { Packaging } from "./routes/Packaging";
 import { Conservazione } from "./routes/Conservazione";
 import { Sommelier } from "./routes/Sommelier";
 import { Vino } from "./routes/Vino";
+import { Vendite } from "./routes/Vendite";
+import { Spedizioni } from "./routes/Spedizioni";
 import { BrandLockup } from "./components/BrandLockup";
 import { PoweredBy } from "./components/PoweredBy";
+import { OperatorPicker } from "./components/OperatorPicker";
+import { useFavorites } from "./hooks/useFavorites";
+import type { Ruolo } from "./api";
 
-const rootRoute = createRootRoute({
-  component: () => (
+/**
+ * Sezioni mostrate a ciascun ruolo.
+ *
+ * Non e' un sistema di permessi: l'applicazione appartiene a una sola
+ * cantina e chiunque puo' cambiare operatore. Serve a mettere in evidenza
+ * gli strumenti del proprio mestiere invece di tutti insieme — le altre
+ * sezioni restano raggiungibili via URL.
+ */
+const SEZIONI = [
+  { to: "/", label: "Catalogo" },
+  { to: "/vendite", label: "Vendite" },
+  { to: "/predizione", label: "Predizione" },
+  { to: "/conservazione", label: "Conservazione" },
+  { to: "/packaging", label: "Packaging" },
+  { to: "/spedizioni", label: "Spedizioni" },
+  { to: "/sommelier", label: "SVEVA" },
+] as const;
+
+const PER_RUOLO: Record<Ruolo, string[]> = {
+  // Il titolare guarda l'insieme: nessun filtro.
+  titolare: SEZIONI.map((s) => s.to),
+  // L'enologo lavora sulla chimica del vino e sulla tenuta dei lotti.
+  enologo: ["/", "/predizione", "/conservazione", "/sommelier"],
+  // Chi vende lavora su canali, margini e presentazione del prodotto.
+  vendite: ["/", "/vendite", "/packaging", "/sommelier"],
+  // La logistica guarda cosa c'e', come e' confezionato e cosa deve partire.
+  logistica: ["/", "/packaging", "/spedizioni"],
+};
+
+function Layout() {
+  const { operators, operatorId } = useFavorites();
+  const ruolo = operators?.find((o) => o.id === operatorId)?.role ?? "titolare";
+  const visibili = SEZIONI.filter((s) => PER_RUOLO[ruolo].includes(s.to));
+
+  return (
     <div className="app">
       <header>
         <Link to="/" className="brand-mark" aria-label="CruScout — torna alla home">
@@ -23,13 +61,17 @@ const rootRoute = createRootRoute({
         </Link>
 
         <nav>
-          <Link to="/" activeProps={{ className: "active" }}>Catalogo</Link>
-          <Link to="/predizione" activeProps={{ className: "active" }}>Predizione</Link>
-          <Link to="/conservazione" activeProps={{ className: "active" }}>Conservazione</Link>
-          <Link to="/packaging" activeProps={{ className: "active" }}>Packaging</Link>
-          <Link to="/sommelier" activeProps={{ className: "active" }}>SVEVA</Link>
+          {visibili.map((s) => (
+            <Link key={s.to} to={s.to} activeProps={{ className: "active" }}>
+              {s.label}
+            </Link>
+          ))}
         </nav>
+
+        {/* Il ruolo governa la navigazione: si cambia da qualunque pagina. */}
+        <OperatorPicker />
       </header>
+
       <main>
         <Outlet />
       </main>
@@ -42,8 +84,10 @@ const rootRoute = createRootRoute({
         </p>
       </footer>
     </div>
-  ),
-});
+  );
+}
+
+const rootRoute = createRootRoute({ component: Layout });
 
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -61,6 +105,18 @@ const conservazioneRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/conservazione",
   component: Conservazione,
+});
+
+const venditeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/vendite",
+  component: Vendite,
+});
+
+const spedizioniRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/spedizioni",
+  component: Spedizioni,
 });
 
 const packagingRoute = createRoute({
@@ -85,6 +141,8 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   predizioneRoute,
   conservazioneRoute,
+  venditeRoute,
+  spedizioniRoute,
   packagingRoute,
   vinoRoute,
   sommelierRoute,

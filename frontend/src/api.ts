@@ -177,6 +177,20 @@ export const fetchConservazione = (type?: "red" | "white" | null, limit = 60) =>
 export const fetchConservazioneVino = (wineId: number) =>
   api.get<Conservazione>(`/api/conservazione/${wineId}`).then((res) => res.data);
 
+/* --- Importanza delle variabili ---------------------------------------- */
+
+export interface VariabileImportanza {
+  campo: string;
+  etichetta: string;
+  importanza: number;
+  incertezza: number;
+  quota: number;
+  significato: string;
+}
+
+export const fetchImportanza = () =>
+  api.get<VariabileImportanza[]>("/api/importanza").then((res) => res.data);
+
 /* --- Leve di miglioramento --------------------------------------------- */
 
 export interface EffettoLeva {
@@ -204,9 +218,12 @@ export const fetchLeve = (wineId: number) =>
 
 /* --- Selezioni di lavoro condivise ------------------------------------ */
 
+export type Ruolo = "titolare" | "enologo" | "vendite" | "logistica";
+
 export interface Operator {
   id: number;
   name: string;
+  role: Ruolo;
 }
 
 export interface Favorite {
@@ -218,8 +235,49 @@ export interface Favorite {
 export const fetchOperators = () =>
   api.get<Operator[]>("/api/operators").then((res) => res.data);
 
-export const createOperator = (name: string) =>
-  api.post<Operator>("/api/operators", { name }).then((res) => res.data);
+export const createOperator = (name: string, role: Ruolo) =>
+  api.post<Operator>("/api/operators", { name, role }).then((res) => res.data);
+
+/* --- Profili di mercato ------------------------------------------------ */
+
+export interface MarketProfile {
+  id: number;
+  name: string;
+  notes: string | null;
+  wine_type: "red" | "white" | null;
+  min_quality: number | null;
+  min_alcohol: number | null;
+  max_alcohol: number | null;
+  max_sugar: number | null;
+  min_acidity: number | null;
+  max_price: number | null;
+}
+
+export type MarketProfileCreate = Omit<MarketProfile, "id">;
+
+export interface VinoPerMercato {
+  id: number;
+  name: string;
+  type: "red" | "white";
+  quality: number;
+  alcohol: number;
+  residual_sugar: number;
+  fixed_acidity: number;
+  price_eur: number | null;
+  margin_pct: number | null;
+  margine_euro: number | null;
+}
+
+export const fetchProfili = () =>
+  api.get<MarketProfile[]>("/api/profili").then((res) => res.data);
+
+export const createProfilo = (p: MarketProfileCreate) =>
+  api.post<MarketProfile>("/api/profili", p).then((res) => res.data);
+
+export const deleteProfilo = (id: number) => api.delete(`/api/profili/${id}`);
+
+export const fetchViniPerProfilo = (id: number) =>
+  api.get<VinoPerMercato[]>(`/api/profili/${id}/vini`).then((res) => res.data);
 
 export const fetchFavorites = () =>
   api.get<Favorite[]>("/api/favorites").then((res) => res.data);

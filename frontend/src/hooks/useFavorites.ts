@@ -7,7 +7,7 @@
  * dichiarata dall'operatore corrente (chi sto usando l'app in questo
  * momento), che non e' un'autenticazione ma una scelta da un elenco.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchOperators,
@@ -16,21 +16,14 @@ import {
   removeFavorite,
   type Favorite,
 } from "../api";
-
-const OPERATOR_KEY = "cruscout.operator";
-
-function readStoredOperator(): number | null {
-  try {
-    const raw = localStorage.getItem(OPERATOR_KEY);
-    return raw ? Number(raw) : null;
-  } catch {
-    return null;
-  }
-}
+import { useOperatore } from "../context/OperatoreContext";
 
 export function useFavorites() {
   const queryClient = useQueryClient();
-  const [operatorId, setOperatorId] = useState<number | null>(readStoredOperator);
+  // L'operatore corrente vive in un contesto condiviso: questo hook e'
+  // usato da piu' componenti, e con uno stato locale ognuno avrebbe la
+  // propria copia, disallineata dalle altre (vedi OperatoreContext).
+  const { operatorId, setOperatorId } = useOperatore();
 
   const { data: operators } = useQuery({ queryKey: ["operators"], queryFn: fetchOperators });
   const { data: favorites } = useQuery({ queryKey: ["favorites"], queryFn: fetchFavorites });
@@ -41,16 +34,7 @@ export function useFavorites() {
     if (operatorId === null && operators && operators.length > 0) {
       setOperatorId(operators[0].id);
     }
-  }, [operatorId, operators]);
-
-  useEffect(() => {
-    if (operatorId === null) return;
-    try {
-      localStorage.setItem(OPERATOR_KEY, String(operatorId));
-    } catch {
-      /* storage non disponibile: la scelta vale solo per questa sessione */
-    }
-  }, [operatorId]);
+  }, [operatorId, operators, setOperatorId]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["favorites"] });
   const add = useMutation({ mutationFn: (w: number) => addFavorite(w, operatorId!), onSuccess: invalidate });

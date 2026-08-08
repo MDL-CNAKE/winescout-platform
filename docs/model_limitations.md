@@ -362,6 +362,72 @@ a parametro singolo migliora la stima. L'interfaccia lo dichiara invece di
 mostrare una lista vuota o di abbassare le soglie fino a trovare qualcosa:
 significa che, secondo il modello, il margine non sta in una sola leva.
 
+## Spiegabilità del modello: cosa guida la qualità
+
+Il modello non si limita più a predire: dichiara su quali variabili si basa.
+È il tassello che mancava rispetto all'impegno di trasparenza preso nella
+dichiarazione etica, dove si afferma che l'utente deve poter capire da dove
+viene una stima.
+
+### Metodo
+
+Si usa l'**importanza per permutazione** e non `feature_importances_` del
+RandomForest. Quest'ultima si basa sulla riduzione di impurità negli alberi e
+ha un difetto noto: sovrastima le variabili con molti valori distinti, perché
+offrono più punti di taglio. Su misure di laboratorio come queste — dove ogni
+parametro ha centinaia di valori diversi — la distorsione sarebbe rilevante.
+
+L'importanza per permutazione misura invece quanto peggiora la previsione
+quando i valori di una variabile vengono mescolati a caso: se rompere una
+variabile non peggiora nulla, quella variabile non serviva.
+
+Il calcolo avviene sul **test set**, con la stessa suddivisione usata in
+`train.py` (80/20, seed 42, stratificata per tipo). Sui dati di addestramento
+l'importanza direbbe cosa il modello ha *usato*; su dati mai visti dice cosa
+**generalizza**, che è l'unica cosa utile a chi decide.
+
+### Risultati
+
+| Variabile | Calo di R² | Quota |
+|---|---:|---:|
+| Grado alcolico | 0,497 | 38,7% |
+| Acidità volatile | 0,248 | 19,3% |
+| SO₂ libera | 0,135 | 10,5% |
+| Solfati | 0,080 | 6,2% |
+| SO₂ totale | 0,068 | 5,3% |
+| Zucchero residuo | 0,059 | 4,6% |
+| pH | 0,046 | 3,6% |
+| Acido citrico | 0,044 | 3,4% |
+| Cloruri | 0,044 | 3,4% |
+| Densità | 0,033 | 2,5% |
+| Acidità fissa | 0,031 | 2,4% |
+| **Tipo (rosso/bianco)** | **−0,0006** | **≈ 0%** |
+
+**Alcol e acidità volatile pesano insieme il 58%.** Il primo è proxy di
+maturazione e corpo, la seconda è un marcatore di deterioramento: il modello
+ha imparato che la qualità percepita si gioca soprattutto fra "abbastanza
+maturo" e "non difettoso".
+
+**Il tipo di vino non conta.** Il valore è addirittura leggermente negativo,
+cioè indistinguibile dal rumore: una volta noto il profilo chimico, sapere se
+il vino è rosso o bianco non aggiunge nulla alla previsione. È un risultato
+controintuitivo — nel linguaggio comune rosso e bianco sono categorie
+opposte — e mostra che la distinzione commerciale è già contenuta nelle
+misure analitiche.
+
+### Limiti
+
+- L'importanza per permutazione **sottostima le variabili correlate fra
+  loro**: se due parametri portano la stessa informazione, mescolarne uno non
+  peggiora molto perché l'altro compensa. La densità, che dipende da alcol e
+  zuccheri, ne è l'esempio: il suo 2,5% è probabilmente inferiore al suo peso
+  reale.
+- L'importanza dice *quanto* una variabile conta, non *in che direzione*. Che
+  l'acidità volatile pesi in negativo lo sappiamo dall'enologia, non da questo
+  numero.
+- I valori si riferiscono a questo modello su questo dataset: non sono una
+  legge generale dell'enologia.
+
 ## Assenza dell'informazione sul vitigno
 
 Il dataset UCI Wine Quality (rossi e bianchi "Vinho Verde" portoghesi) non

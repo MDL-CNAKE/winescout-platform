@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { predictQuality, type PredictionInput } from "../api";
 import { ValidationNote } from "../components/ValidationNote";
+import { ImportanzaVariabili } from "../components/ImportanzaVariabili";
 
 const DEFAULTS: PredictionInput = {
   type: "red",
@@ -118,6 +119,8 @@ export function Predizione() {
 
         <ValidationNote kind="predizione" />
       </div>
+
+      <ImportanzaVariabili />
     </section>
   );
 }

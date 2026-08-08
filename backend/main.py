@@ -21,6 +21,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 
 from src.conservation import valuta_conservazione
+from src.importance import NUM as IMPORTANCE_NUM, calcola_importanza
 from src.levers import analizza_leve
 from src.database.connection import DatabaseConnection
 from src.models.recommender import WineRecommender
@@ -599,13 +600,18 @@ def get_packaging_item(wine_id: int):
 # tabella condivisa, cosi' un collega vede cosa ha segnato l'altro.
 # --------------------------------------------------------------------------
 
+RUOLI = ("titolare", "enologo", "vendite", "logistica")
+
+
 class Operator(BaseModel):
     id: int
     name: str
+    role: str
 
 
 class OperatorCreate(BaseModel):
     name: str
+    role: str = "titolare"
 
 
 class Favorite(BaseModel):
@@ -624,7 +630,7 @@ def get_operators():
     try:
         with DatabaseConnection() as conn:
             cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT id, name FROM operators ORDER BY name")
+            cursor.execute("SELECT id, name, role FROM operators ORDER BY name")
             rows = cursor.fetchall()
             cursor.close()
             return rows
@@ -640,15 +646,19 @@ def create_operator(payload: OperatorCreate):
         raise HTTPException(status_code=400, detail="Il nome non puo' essere vuoto")
     if len(name) > 60:
         raise HTTPException(status_code=400, detail="Nome troppo lungo (max 60 caratteri)")
+    if payload.role not in RUOLI:
+        raise HTTPException(status_code=400, detail=f"Ruolo non valido: {payload.role}")
 
     try:
         with DatabaseConnection() as conn:
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO operators (name) VALUES (%s)", (name,))
+            cursor.execute(
+                "INSERT INTO operators (name, role) VALUES (%s, %s)", (name, payload.role)
+            )
             new_id = cursor.lastrowid
             conn.commit()
             cursor.close()
-        return {"id": new_id, "name": name}
+        return {"id": new_id, "name": name, "role": payload.role}
     except Exception as e:
         # Il vincolo di unicita' sul nome e' la causa piu' probabile.
         logger.exception("Errore nella creazione dell'operatore")
@@ -895,6 +905,216 @@ def leve_di_miglioramento(wine_id: int):
         "previsione_attuale": base,
         "leve": [vars(e) for e in leve],
     }
+
+
+# --------------------------------------------------------------------------
+# Importanza delle variabili
+#
+# Explainability del modello: quali parametri guidano davvero la previsione
+# di qualita'. Calcolata per permutazione sul test set - vedi src/importance.py
+# per il perche' di entrambe le scelte.
+# --------------------------------------------------------------------------
+
+class VariabileImportanzaOut(BaseModel):
+    campo: str
+    etichetta: str
+    importanza: float
+    incertezza: float
+    quota: float
+    significato: str
+
+
+@app.get("/api/importanza", response_model=list[VariabileImportanzaOut])
+def importanza_variabili():
+    """Il calcolo e' costoso ma avviene una volta sola: il risultato resta in
+    memoria per le richieste successive (vedi cache in src/importance.py)."""
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT type, " + ", ".join(IMPORTANCE_NUM) + ", quality FROM wines"
+            )
+            df = pd.DataFrame(cursor.fetchall(), columns=[c[0] for c in cursor.description])
+            cursor.close()
+
+        df[IMPORTANCE_NUM] = df[IMPORTANCE_NUM].astype(float)
+        df["quality"] = df["quality"].astype(int)
+
+        return [vars(v) for v in calcola_importanza(state["model"], df)]
+    except Exception as e:
+        logger.exception("Errore nel calcolo dell'importanza")
+        raise HTTPException(status_code=500, detail="Errore nel calcolo dell'importanza") from e
+
+
+# --------------------------------------------------------------------------
+# Profili di mercato
+#
+# Il dataset non contiene geografia, clienti ne' storico vendite: nessun dato
+# permette di dedurre cosa piaccia in un certo mercato. La conoscenza resta
+# quindi di chi vende, che la dichiara come profilo; il sistema si limita a
+# cercare fra 6497 lotti quelli che vi rispondono, ordinati per redditivita'.
+# --------------------------------------------------------------------------
+
+class MarketProfile(BaseModel):
+    id: int
+    name: str
+    notes: str | None
+    wine_type: str | None
+    min_quality: int | None
+    min_alcohol: float | None
+    max_alcohol: float | None
+    max_sugar: float | None
+    min_acidity: float | None
+    max_price: float | None
+
+
+class MarketProfileCreate(BaseModel):
+    name: str
+    notes: str | None = None
+    wine_type: str | None = None
+    min_quality: int | None = None
+    min_alcohol: float | None = None
+    max_alcohol: float | None = None
+    max_sugar: float | None = None
+    min_acidity: float | None = None
+    max_price: float | None = None
+
+
+class VinoPerMercato(BaseModel):
+    id: int
+    name: str
+    type: str
+    quality: int
+    alcohol: float
+    residual_sugar: float
+    fixed_acidity: float
+    price_eur: float | None
+    margin_pct: float | None
+    margine_euro: float | None
+
+
+_PROFILE_COLS = (
+    "id, name, notes, wine_type, min_quality, min_alcohol, max_alcohol, "
+    "max_sugar, min_acidity, max_price"
+)
+
+
+@app.get("/api/profili", response_model=list[MarketProfile])
+def lista_profili():
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(f"SELECT {_PROFILE_COLS} FROM market_profiles ORDER BY name")
+            rows = cursor.fetchall()
+            cursor.close()
+            return rows
+    except Exception as e:
+        logger.exception("Errore nel caricamento dei profili")
+        raise HTTPException(status_code=500, detail="Errore nel caricamento dei profili") from e
+
+
+@app.post("/api/profili", response_model=MarketProfile, status_code=201)
+def crea_profilo(payload: MarketProfileCreate):
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Il nome non puo' essere vuoto")
+    if payload.wine_type is not None and payload.wine_type not in ("red", "white"):
+        raise HTTPException(status_code=400, detail="Tipo non valido")
+
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO market_profiles (name, notes, wine_type, min_quality, "
+                "min_alcohol, max_alcohol, max_sugar, min_acidity, max_price) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (name, payload.notes, payload.wine_type, payload.min_quality,
+                 payload.min_alcohol, payload.max_alcohol, payload.max_sugar,
+                 payload.min_acidity, payload.max_price),
+            )
+            new_id = cursor.lastrowid
+            conn.commit()
+            cursor.close()
+        return {"id": new_id, **payload.model_dump(), "name": name}
+    except Exception as e:
+        logger.exception("Errore nella creazione del profilo")
+        raise HTTPException(status_code=409, detail="Profilo gia' esistente o non valido") from e
+
+
+@app.delete("/api/profili/{profile_id}", status_code=204)
+def elimina_profilo(profile_id: int):
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM market_profiles WHERE id = %s", (profile_id,))
+            conn.commit()
+            cursor.close()
+    except Exception as e:
+        logger.exception("Errore nell'eliminazione del profilo")
+        raise HTTPException(status_code=500, detail="Errore nell'eliminazione del profilo") from e
+
+
+@app.get("/api/profili/{profile_id}/vini", response_model=list[VinoPerMercato])
+def vini_per_profilo(profile_id: int, limit: int = 40):
+    """Referenze che rispondono al profilo, ordinate per margine in euro.
+
+    L'ordinamento e' sul margine ASSOLUTO e non su quello percentuale: nella
+    logica di pricing del progetto la percentuale e' inversamente legata al
+    prezzo, quindi ordinare per percentuale metterebbe sempre in cima i vini
+    piu' economici. Chi vende ha bisogno di sapere quanto incassa, non solo
+    quanto ricarica: entrambe le colonne restano visibili.
+    """
+    limit = max(1, min(limit, 100))
+
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(f"SELECT {_PROFILE_COLS} FROM market_profiles WHERE id = %s",
+                           (profile_id,))
+            p = cursor.fetchone()
+            if p is None:
+                raise HTTPException(status_code=404, detail="Profilo non trovato")
+
+            conditions: list[str] = []
+            params: list = []
+
+            def add(clause: str, value) -> None:
+                if value is not None:
+                    conditions.append(clause)
+                    params.append(value)
+
+            add("type = %s", p["wine_type"])
+            add("quality >= %s", p["min_quality"])
+            add("alcohol >= %s", p["min_alcohol"])
+            add("alcohol <= %s", p["max_alcohol"])
+            add("residual_sugar <= %s", p["max_sugar"])
+            add("fixed_acidity >= %s", p["min_acidity"])
+            add("price_eur <= %s", p["max_price"])
+
+            where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+            cursor.execute(
+                "SELECT id, name, type, quality, alcohol, residual_sugar, "
+                "fixed_acidity, price_eur, margin_pct FROM wines "
+                f"{where} ORDER BY (price_eur * margin_pct / 100) DESC LIMIT %s",
+                params + [limit],
+            )
+            rows = cursor.fetchall()
+            cursor.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Errore nella ricerca per profilo")
+        raise HTTPException(status_code=500, detail="Errore nella ricerca per profilo") from e
+
+    for r in rows:
+        prezzo = r["price_eur"]
+        margine = r["margin_pct"]
+        r["margine_euro"] = (
+            round(float(prezzo) * float(margine) / 100, 2)
+            if prezzo is not None and margine is not None
+            else None
+        )
+    return rows
 
 
 class SommelierRequest(BaseModel):

@@ -15,7 +15,6 @@ import { FilterBar, EMPTY_FILTERS, type Filters } from "../components/FilterBar"
 import { WineGridCard } from "../components/WineGridCard";
 import { Pagination } from "../components/Pagination";
 import { EmptyState } from "../components/EmptyState";
-import { OperatorPicker } from "../components/OperatorPicker";
 import { useFavorites } from "../hooks/useFavorites";
 
 const PAGE_SIZE = 24;
@@ -42,15 +41,6 @@ export function Home() {
 
   return (
     <section className="home">
-      <header className="home-intro">
-        <h1 className="home-claim">Dagli algoritmi al calice.</h1>
-        <p className="home-desc">
-          Senza storie di fantasia: profilo chimico, qualità stimata e abbinamenti derivano dai
-          dati reali di ogni referenza.
-        </p>
-      </header>
-
-      <OperatorPicker />
 
       <FilterBar
         filters={filters}
