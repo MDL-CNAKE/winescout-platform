@@ -508,3 +508,98 @@ mai un vitigno specifico a un vino del catalogo selezionato, per evitare di
 presentare all'utente un'informazione plausibile ma non verificabile dai dati
 di partenza. Il modello può discutere di vitigni solo in termini generali,
 quando la domanda non riguarda un vino specifico del catalogo.
+
+## Il verdetto strutturato non è più vero della risposta libera
+
+Il verdetto di abbinamento (`POST /api/verdetto`) obbliga il modello a
+compilare uno schema — giudizio su quattro valori, motivazione, dato citato,
+eventuale profilo alternativo — validato con Pydantic, con un solo
+ritentativo in caso di output non conforme.
+
+**Cosa garantisce.** Che l'oggetto che arriva all'interfaccia abbia la forma
+attesa: nessun campo mancante, nessun giudizio fuori scala, nessun testo
+sconfinato. Questo rende il giudizio ordinabile e filtrabile, cosa che una
+frase in prosa non è.
+
+**Cosa NON garantisce.** Che il contenuto sia corretto. Uno schema valida la
+struttura, non la verità: un modello può compilare `dato_citato` con un numero
+plausibile ma sbagliato, e la validazione lo lascia passare. Il campo esiste
+per rendere *ispezionabile* l'ancoraggio ai dati — chi legge può confrontare
+il valore con la scheda del lotto — non per certificarlo.
+
+**Costo del ritentativo.** Nel caso peggiore latenza e token raddoppiano. Le
+metriche mostrate in interfaccia sono cumulative sui tentativi effettuati, e il
+numero di tentativi viene dichiarato apertamente: se il modello ha dovuto
+essere corretto, è un'informazione sul funzionamento del sistema, non un
+dettaglio da nascondere.
+
+**Perché due tentativi e non di più.** Se un modello sbaglia due volte lo
+stesso schema dopo essere stato corretto con l'errore ricevuto, il problema
+di solito è il modello o il prompt, non la sfortuna: insistere aumenta costo e
+attesa senza cambiare l'esito. Il sistema dichiara il fallimento e lascia
+disponibile il sommelier in forma libera.
+
+## Quanto funziona davvero il retrieval (misurato)
+
+Il retrieval ibrido era stato scelto su un'ipotesi: senza componente lessicale
+il sistema fallirebbe sui nomi di piatti extra-europei, che il modello di
+embedding multilingue non rappresenta bene. L'ipotesi ora è misurata su 12
+domande con documento atteso dichiarato (`python src/rag/evaluate.py`).
+
+| strategia | hit rate@3 | MRR |
+|---|---|---|
+| **ibrida** (in uso) | **75%** | **0.653** |
+| solo semantica | 42% | 0.361 |
+| solo lessicale | 58% | 0.542 |
+
+**L'ipotesi regge, e in modo più netto del previsto.** Il semantico puro
+fallisce su `ndole` e su "piatto africano" — esattamente i casi per cui la
+componente lessicale è stata scritta. Il bias culturale del modello di
+embedding non è una preoccupazione teorica: si vede nei numeri.
+
+**Il risultato più interessante è che il semantico puro è la strategia
+peggiore**, sotto anche al lessicale. Su una knowledge base piccola, in
+italiano e con vocabolario tecnico, la corrispondenza per radice di parola è
+più informativa della vicinanza vettoriale prodotta da un modello multilingue
+generalista. È un promemoria contro l'automatismo "embedding = moderno =
+migliore": la scelta dipende dalla dimensione e dalla lingua del corpus, non
+dalla novità della tecnica.
+
+**Cosa fallisce ancora.** Tre domande sbagliano con ogni strategia: carbonara,
+tiramisù, prosciutto crudo. Il motivo è comune — sono nomi di piatti, e la
+knowledge base è scritta per **sensazioni** (grassezza, tendenza dolce,
+sapidità), non per ricette. Nessun aggiustamento del retrieval può colmare
+questo divario: manca il passaggio da piatto a sensazione, che oggi resta a
+carico dell'LLM in fase di generazione. Aggiungere alla knowledge base un
+documento che mappi piatti comuni alle rispettive sensazioni chiuderebbe la
+lacuna, e sarebbe un intervento sui dati, non sull'algoritmo.
+
+**Limite della misura.** Dodici domande scritte a mano, con ground truth
+scelta da chi ha scritto la knowledge base. Un divario di 33 punti è troppo
+ampio per essere rumore, ma questi numeri non sono una validazione statistica:
+servono a smascherare fallimenti netti, non a certificare una percentuale.
+
+## L'agente sul catalogo: cosa garantisce e cosa no
+
+`POST /api/agente` dà al modello due strumenti (`cerca_vini`, `scheda_lotto`)
+e ne esegue le chiamate. Il modello sceglie quale strumento usare e con quali
+argomenti; non scrive SQL, non tocca il database, e i limiti — massimo 20
+risultati, filtri consentiti — restano nel codice anche quando il modello
+chiede altro.
+
+**Cosa questo elimina.** L'invenzione di lotti, prezzi e gradazioni. Prima, a
+una domanda sul catalogo il modello rispondeva a memoria: in modo fluente e
+indistinguibile da una risposta vera. Ora i numeri che cita provengono da una
+query, e l'interfaccia mostra quale.
+
+**Cosa NON elimina.** Il modello può ancora scegliere lo strumento sbagliato o
+tradurre male la domanda in filtri — chiedere i rossi e filtrare i bianchi,
+o interpretare "economici" con una soglia arbitraria. Il function calling
+sposta l'errore dall'invenzione del dato alla **formulazione della domanda**:
+è un errore più raro e, soprattutto, visibile, perché i filtri usati sono
+mostrati accanto alla risposta. Chi legge può accorgersene; con una risposta
+inventata non poteva.
+
+**Costo.** Ogni giro del ciclo è una chiamata a pagamento. Il tetto è quattro
+giri: oltre, si dichiara il fallimento invece di restituire una risposta
+parziale.
