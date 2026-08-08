@@ -9,11 +9,11 @@
   --text: #2a2a2a;
 
   /* Inter per l'interfaccia: le cifre tabulari tengono allineate le colonne
-     di prezzi, percentuali e valori chimici. Playfair Display solo per
-     marchio e claim, dove il corpo grande regge le grazie sottili su fondo
-     scuro (sotto i 20px si perderebbero). */
+     di prezzi, percentuali e valori chimici. Righteous solo per marchio e
+     titoli: e' un geometrico display a peso unico, quindi non va mai usato
+     per il corpo del testo. */
   --font-ui: "Inter", "Segoe UI", system-ui, sans-serif;
-  --font-display: "Playfair Display", Georgia, serif;
+  --font-display: "Righteous", "Trebuchet MS", sans-serif;
 
   font-family: var(--font-ui);
   font-feature-settings: "tnum" 1;
@@ -21,26 +21,25 @@
 
 * { box-sizing: border-box; }
 
-/* Sfondo globale: il Bacco di Caravaggio è sempre visibile per intero
-   (background-size: contain, nessun ritaglio: si vedono entrambe le mani
-   e il calice). L'immagine resta ferma mentre il contenuto scorre sopra. */
+/* Fondo scuro uniforme, con un alone caldo in alto.
+   Il Bacco di Caravaggio e' stato usato a lungo come sfondo, poi rimosso:
+   essendo un dipinto verticale e il contenuto una colonna centrale, i due
+   si contendevano lo stesso spazio, e ogni guadagno di visibilita' del
+   quadro costava leggibilita' al testo. La palette bordeaux e oro resta
+   comunque quella derivata da lui. */
 body {
   margin: 0;
   color: var(--text);
-  background-color: var(--ink);
-  background-image:
-    linear-gradient(rgba(20, 8, 12, 0.45), rgba(20, 8, 12, 0.65)),
-    url("./assets/hero.jpg");
-  background-position: center top;
-  background-size: cover;
-  background-repeat: no-repeat;
+  background:
+    radial-gradient(ellipse at 50% 0%, #2a1219 0%, transparent 55%),
+    var(--ink);
   background-attachment: fixed;
+  min-height: 100vh;
 }
 
-.app { max-width: 960px; margin: 0 auto; padding: 1.5rem; background: transparent; }
+.app { max-width: 1100px; margin: 0 auto; padding: 1.5rem; background: transparent; }
 
-/* Header e landing: pannelli scuri, testo chiaro. Il dipinto resta
-   leggibile sotto senza essere sbiadito da un velo bianco. */
+/* Intestazione e home: pannelli scuri con testo chiaro. */
 .app > header,
 .home {
   background: rgba(26, 11, 16, 0.55);
@@ -97,7 +96,9 @@ main > section:not(.home) {
 }
 .brand-lockup-word {
   font-family: var(--font-display);
-  font-weight: 700;
+  /* Righteous esiste solo in peso 400: chiedendone 700 il browser ne
+     sintetizzerebbe uno finto, ingrossando i tratti in modo irregolare. */
+  font-weight: 400;
   letter-spacing: 0.01em;
   line-height: 1;
   white-space: nowrap;
@@ -106,7 +107,11 @@ main > section:not(.home) {
 .brand-lockup-accent { color: var(--gold-light); }
 .brand-lockup.header .brand-lockup-word { font-size: 1.45rem; }
 .brand-lockup.hero .brand-lockup-word { font-size: 2.6rem; }
-.app > header nav { margin-top: 0; }
+/* `margin-left: auto` invece di affidarsi a space-between: con il ruolo
+   Titolare le voci sono sei e la navigazione va a capo su una riga propria,
+   dove space-between non ha piu' effetto e la lascerebbe allineata a
+   sinistra. Cosi' resta a destra in tutti i casi. */
+.app > header nav { margin-top: 0; margin-left: auto; }
 
 /* Intestazione interna alle pagine: nessun contenitore aggiuntivo, solo
    spaziatura — evita l'effetto "scatole dentro scatole". */
@@ -121,7 +126,7 @@ main > section:not(.home) {
 
 /* Navbar a bottoni: unico punto di navigazione del sito (la Home non
    ripete gli stessi link). */
-nav { display: flex; flex-wrap: nowrap; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
+nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
 nav a {
   text-decoration: none;
   white-space: nowrap;
@@ -398,40 +403,55 @@ main .sommelier-greeting {
   color: #2e7d32;
 }
 
-/* ===== Home: hero compatto + catalogo in griglia ===== */
-.home-intro {
-  text-align: center;
-  padding: 0.5rem 0 1.75rem;
-  border-bottom: 1px solid rgba(231, 211, 163, 0.25);
-  margin-bottom: 1.5rem;
-}
-main .home-intro .home-claim { font-size: 2.3rem; margin-bottom: 0.6rem; }
-main .home-intro .home-desc { font-size: 0.95rem; }
 
-/* --- Operatore corrente: distingue le selezioni fra colleghi --- */
+/* --- Operatore corrente: distingue le selezioni e governa la navigazione --- */
 .operator-picker {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.6rem;
-  padding-bottom: 1rem;
+  width: 100%;
+  padding-top: 0.9rem;
+  margin-top: 0.3rem;
+  border-top: 1px solid rgba(244, 236, 226, 0.12);
 }
+/* Nessun selettore vive piu' dentro `main`: il blocco operatore sta
+   nell'intestazione, e prefissare le regole con `main` le renderebbe
+   inerti — il testo tornerebbe al colore di base del body, grigio scuro
+   su fondo scuro. */
 .operator-picker label {
   flex-direction: row !important;
   align-items: center;
   gap: 0.5rem;
 }
-main .operator-label {
+.operator-label {
   font-size: 0.68rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(244, 236, 226, 0.5);
+  color: rgba(244, 236, 226, 0.75);
 }
-main .operator-picker select { padding: 0.35rem 0.6rem; font-size: 0.85rem; }
+/* Il ruolo governa le sezioni visibili, quindi va detto — ma sottovoce:
+   un badge dorato accanto al menu duplicava il peso visivo senza aggiungere
+   informazione. */
+.operator-ruolo {
+  font-size: 0.72rem;
+  color: var(--gold-light);
+  letter-spacing: 0.02em;
+}
+.operator-picker select,
+.operator-add input {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(244, 236, 226, 0.28);
+  color: var(--cream);
+  border-radius: 8px;
+}
+.operator-picker select option { background: #241017; color: var(--cream); }
+.operator-add input { max-width: 160px; }
 .operator-add { display: inline-flex; gap: 0.4rem; align-items: center; }
-main .operator-add input { padding: 0.35rem 0.6rem; font-size: 0.85rem; max-width: 160px; }
-main .operator-confirm,
-main .operator-cancel {
+.operator-confirm,
+.operator-cancel {
   background: transparent;
   border: 1px solid rgba(244, 236, 226, 0.28);
   color: rgba(244, 236, 226, 0.75);
@@ -439,14 +459,14 @@ main .operator-cancel {
   padding: 0.32rem 0.7rem;
   font-size: 0.75rem;
   font-weight: 500;
+  cursor: pointer;
 }
-main .operator-confirm:hover:not(:disabled),
-main .operator-cancel:hover:not(:disabled) {
+.operator-confirm:hover:not(:disabled),
+.operator-cancel:hover:not(:disabled) {
   border-color: var(--gold-light);
   color: var(--gold-light);
-  background: transparent;
-  transform: none;
 }
+.operator-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* Iniziali dei colleghi che hanno segnato lo stesso vino */
 .grid-card-fav-group { display: inline-flex; align-items: center; gap: 0.35rem; }
@@ -707,8 +727,10 @@ main .grid-card-fav {
 main .grid-card-fav:hover:not(:disabled) { background: transparent; color: var(--gold-light); transform: none; }
 main .grid-card-fav.active { color: #d4667a; }
 main .grid-card-title {
-  font-family: var(--font-display);
-  font-size: 1.12rem;
+  /* Non il carattere display: sulle card i nomi sono lunghi e ravvicinati,
+     e un geometrico pesante li renderebbe faticosi da scorrere. */
+  font-weight: 600;
+  font-size: 1.02rem;
   line-height: 1.25;
   color: var(--cream);
   margin: 0 0 0.4rem;
@@ -791,24 +813,6 @@ main .page-btn.active {
 main .page-btn:disabled { opacity: 0.3; background: transparent; }
 .page-gap { color: rgba(244, 236, 226, 0.35); padding: 0 0.2rem; }
 
-.home-claim {
-  font-family: var(--font-display);
-  line-height: 1.15;
-  color: var(--cream);
-  font-weight: 700;
-  letter-spacing: 0.005em;
-  margin: 0 auto 1.25rem;
-  max-width: 700px;
-}
-.home-desc {
-  max-width: 620px;
-  margin: 0 auto;
-  line-height: 1.7;
-  color: rgba(244, 236, 226, 0.82);
-}
-@media (max-width: 560px) {
-  main .home-intro .home-claim { font-size: 1.7rem; }
-}
 
 /* ===== Packaging ===== */
 .packaging-grid {
@@ -1303,6 +1307,120 @@ main .leva-intervento {
 }
 main .leve-vuoto p:first-child { margin-top: 0; color: var(--cream); }
 main .leve-vuoto p:last-child { margin-bottom: 0; }
+
+/* --- Importanza delle variabili --- */
+.importanza { margin-top: 2.5rem; }
+.importanza h3 { margin-bottom: 0.3rem; }
+.imp-list { list-style: none; margin: 1.5rem 0 0; padding: 0; display: grid; gap: 1.1rem; }
+.imp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 0.35rem;
+}
+main .imp-nome { font-weight: 600; font-size: 0.92rem; color: var(--cream); }
+main .imp-quota {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--gold-light);
+  white-space: nowrap;
+}
+.imp-barra-sfondo {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+.imp-barra {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(231, 211, 163, 0.5), var(--gold-light));
+}
+main .imp-testo {
+  margin: 0.45rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: rgba(244, 236, 226, 0.6);
+}
+/* Variabili il cui contributo e' indistinguibile dal rumore: restano
+   visibili, perche' sapere cosa NON conta e' esso stesso un risultato. */
+.imp-item.trascurabile .imp-barra { background: rgba(244, 236, 226, 0.25); }
+.imp-item.trascurabile .imp-quota { color: rgba(244, 236, 226, 0.45); }
+
+/* --- Spedizioni: sezione in arrivo --- */
+.spedizioni {
+  text-align: center;
+  padding: 2rem 1rem 3rem;
+}
+.razzo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+  /* Il grappolo sale e ricade, come un razzo che non si stacca del tutto. */
+  animation: razzo-salto 2.4s ease-in-out infinite;
+}
+@keyframes razzo-salto {
+  0%, 100% { transform: translateY(10px); }
+  45%      { transform: translateY(-16px); }
+  60%      { transform: translateY(-10px); }
+}
+.razzo-fiamma {
+  transform-origin: 60px 156px;
+  animation: fiamma 0.32s ease-in-out infinite alternate;
+}
+@keyframes fiamma {
+  from { transform: scaleY(0.7) scaleX(1.05); opacity: 0.75; }
+  to   { transform: scaleY(1.15) scaleX(0.92); opacity: 1; }
+}
+/* Chi ha chiesto meno animazioni al sistema operativo non le subisce. */
+@media (prefers-reduced-motion: reduce) {
+  .razzo, .razzo-fiamma { animation: none; }
+}
+main .spedizioni h2 { margin-bottom: 0.2rem; }
+main .spedizioni-claim {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--gold-light);
+  margin: 0 0 1.2rem;
+}
+main .spedizioni .hint,
+main .spedizioni .caption {
+  max-width: 46ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+main .spedizioni .caption { margin-top: 1.2rem; }
+
+/* --- Profili di mercato --- */
+.profili-barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.profilo-scheda {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(231, 211, 163, 0.2);
+  border-radius: 10px;
+  padding: 1.1rem 1.3rem;
+  margin-bottom: 1.5rem;
+}
+.profilo-scheda h3 { margin: 0 0 0.3rem; }
+main .profilo-criteri {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--gold-light);
+  letter-spacing: 0.02em;
+}
+main .margine-pct { color: rgba(244, 236, 226, 0.6); }
+main .margine-euro { color: #9fdcaa; font-weight: 700; }
 
 /* --- Nota di validazione: numeri della validazione e loro limite --- */
 main .validation-note {
