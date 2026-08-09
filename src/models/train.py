@@ -1,8 +1,16 @@
 """Addestra il modello di predizione della qualita del vino.
 
-La scelta di RandomForestRegressor non e' arbitraria: e' stata confrontata
-con GradientBoosting e LinearRegression tramite cross-validation in
-compare_models.py, risultando migliore su tutte le metriche.
+La scelta di RandomForestRegressor non e' arbitraria: e' stata confrontata con
+GradientBoosting e LinearRegression in compare_models.py, dove resta prima su
+tutte le metriche anche con cross-validation raggruppata (R2 0.385 contro
+0.364 e 0.289).
+
+Il vantaggio pero' e' modesto, e va detto: contro il GradientBoosting sono
+0.021 di R2, con uno scarto tipo di 0.015 sull'RMSE fra i fold. La formula
+"nettamente migliore" che compariva qui era basata sul confronto contaminato,
+dove il divario appariva sei volte piu' grande - perche' la fuga premia i
+modelli capaci di memorizzare, e una foresta di 200 alberi lo e' molto piu' di
+una retta.
 
 VALUTAZIONE RAGGRUPPATA. Il dataset contiene 1.177 righe perfettamente
 duplicate su 6.497 (18%). Uno split casuale ne manda una in addestramento e la
