@@ -16,7 +16,7 @@
  */
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { fetchWines, askSommelier, chiediAgente } from "../api";
+import { fetchWines, askSommelier, chiediAgente, type Messaggio } from "../api";
 import { RobotSommelierIcon } from "../components/RobotSommelierIcon";
 import { MetricheRisposta } from "../components/MetricheRisposta";
 import { PassiAgente } from "../components/PassiAgente";
@@ -30,12 +30,31 @@ export function Sommelier() {
   const [wineId, setWineId] = useState<number | null>(null);
   const [question, setQuestion] = useState("");
 
+  // Lo storico vive qui, nel client. Il backend resta senza stato: nessuna
+  // sessione da far scadere, e chi chiude la pagina ha davvero chiuso la
+  // conversazione.
+  const [storico, setStorico] = useState<Messaggio[]>([]);
+
   const rag = useMutation({
-    mutationFn: () => askSommelier(question, useWine ? wineId : null),
+    mutationFn: (domanda: string) =>
+      askSommelier(domanda, useWine ? wineId : null, storico),
+    onSuccess: (data, domanda) => {
+      setStorico((s) => [
+        ...s,
+        { ruolo: "user", contenuto: domanda },
+        { ruolo: "assistant", contenuto: data.answer },
+      ]);
+      setQuestion("");
+    },
   });
   const agente = useMutation({ mutationFn: () => chiediAgente(question) });
 
   const attiva = modalita === "conoscenza" ? rag : agente;
+
+  const invia = () => {
+    if (modalita === "conoscenza") rag.mutate(question.trim());
+    else agente.mutate();
+  };
 
   const cambiaModalita = (m: Modalita) => {
     setModalita(m);
@@ -109,25 +128,60 @@ export function Sommelier() {
         </>
       )}
 
+      {/* La conversazione. Compare solo quando c'è, così una pagina appena
+          aperta resta pulita invece di mostrare un riquadro vuoto. */}
+      {modalita === "conoscenza" && storico.length > 0 && (
+        <div className="conversazione">
+          {storico.map((m, i) => (
+            <div key={i} className={`turno turno-${m.ruolo}`}>
+              <span className="turno-chi">{m.ruolo === "user" ? "Tu" : "SVEVA"}</span>
+              <p>{m.contenuto}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <textarea
         className="sommelier-input"
         placeholder={
           modalita === "conoscenza"
-            ? "Es: 'Come abbino un piatto molto grasso?'"
+            ? storico.length > 0
+              ? "Continua pure: puoi dire 'e con il pesce?'"
+              : "Es: 'Come abbino un piatto molto grasso?'"
             : "Es: 'Quali rossi ho sopra qualità 6 sotto i 15 euro?'"
         }
-        rows={4}
+        rows={modalita === "conoscenza" && storico.length > 0 ? 2 : 4}
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey && question.trim() && !attiva.isPending) {
+            e.preventDefault();
+            invia();
+          }
+        }}
       />
 
-      <button
-        className="btn-primary"
-        disabled={!question.trim() || attiva.isPending}
-        onClick={() => attiva.mutate()}
-      >
-        {attiva.isPending ? "SVEVA sta pensando..." : "Chiedi a SVEVA"}
-      </button>
+      <div className="sommelier-azioni">
+        <button
+          className="btn-primary"
+          disabled={!question.trim() || attiva.isPending}
+          onClick={invia}
+        >
+          {attiva.isPending ? "SVEVA sta pensando..." : "Chiedi a SVEVA"}
+        </button>
+
+        {modalita === "conoscenza" && storico.length > 0 && (
+          <button
+            className="btn-secondario"
+            onClick={() => {
+              setStorico([]);
+              rag.reset();
+            }}
+          >
+            Nuova conversazione
+          </button>
+        )}
+      </div>
 
       {attiva.isError && <p className="error">Errore nella chiamata a SVEVA.</p>}
 
@@ -144,7 +198,14 @@ export function Sommelier() {
               ))}
             </details>
           )}
-          <p>{rag.data.answer}</p>
+          {/* La finestra scorrevole è invisibile: senza questo numero, quando
+              SVEVA "dimentica" sembra un difetto e non una politica di
+              budget dichiarata. */}
+          {rag.data.messaggi_ricordati > 0 && (
+            <p className="caption">
+              Ha tenuto conto di {rag.data.messaggi_ricordati} messaggi precedenti.
+            </p>
+          )}
           <MetricheRisposta metriche={rag.data.metriche} />
         </div>
       )}

@@ -1692,3 +1692,48 @@ main .empty-state-title {
   color: #8a8177;
   font-variant-numeric: tabular-nums;
 }
+
+/* --------------------------------------------------------------------
+   Conversazione con SVEVA
+
+   I due interlocutori si distinguono per allineamento e colore del
+   bordo, non per bolle contrapposte: la pagina non e' una chat di
+   messaggistica e imitarla sposterebbe il tono dal lavoro allo svago.
+   -------------------------------------------------------------------- */
+.conversazione {
+  margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.turno {
+  padding-left: 0.9rem;
+  border-left: 3px solid #e2dbd0;
+}
+.turno-user { border-left-color: #c9bfae; }
+.turno-assistant { border-left-color: var(--bordeaux, #6d1b2f); }
+.turno-chi {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a8177;
+  margin-bottom: 0.2rem;
+}
+.turno p { margin: 0; }
+
+.sommelier-azioni {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.btn-secondario {
+  background: transparent;
+  color: #6b6357;
+  border: 1px solid #d6cfc4;
+}
+.btn-secondario:hover:not(:disabled) {
+  background: #f1ece4;
+  color: var(--bordeaux-dark, #6b1f2a);
+}

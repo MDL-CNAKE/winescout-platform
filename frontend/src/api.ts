@@ -70,6 +70,8 @@ export interface SommelierResponse {
   demo_mode: boolean;
   sources: string[];
   metriche: MetricheLLM | null;
+  /** Quanti messaggi precedenti sono stati davvero inviati al modello. */
+  messaggi_ricordati: number;
 }
 
 export const fetchWines = () =>
@@ -298,9 +300,27 @@ export const addFavorite = (wineId: number, operatorId: number) =>
 export const removeFavorite = (wineId: number, operatorId: number) =>
   api.delete("/api/favorites", { params: { wine_id: wineId, operator_id: operatorId } });
 
-export const askSommelier = (question: string, wineId: number | null) =>
+/**
+ * Un turno della conversazione. Lo storico vive nel client e viaggia a ogni
+ * richiesta: il backend resta senza stato, quindi non c'è nessuna sessione da
+ * far scadere e nessuna conversazione conservata sul server.
+ */
+export interface Messaggio {
+  ruolo: "user" | "assistant";
+  contenuto: string;
+}
+
+export const askSommelier = (
+  question: string,
+  wineId: number | null,
+  storico: Messaggio[] = [],
+) =>
   api
-    .post<SommelierResponse>("/api/sommelier", { question, wine_id: wineId })
+    .post<SommelierResponse>("/api/sommelier", {
+      question,
+      wine_id: wineId,
+      storico,
+    })
     .then((res) => res.data);
 
 /**

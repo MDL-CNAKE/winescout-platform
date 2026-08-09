@@ -1593,9 +1593,107 @@ def agente(payload: AgenteRequest):
     )
 
 
+# --------------------------------------------------------------------------
+# Memoria conversazionale
+#
+# Fino a qui ogni domanda partiva da zero: "e con il pesce?" non aveva senso
+# perche' SVEVA non sapeva di cosa si stesse parlando.
+#
+# DOVE STA LA MEMORIA. Nel client, non nel server. Il frontend rimanda lo
+# storico a ogni richiesta e il backend resta senza stato. La scelta ha un
+# costo (lo storico viaggia avanti e indietro) e due vantaggi che qui pesano
+# di piu': nessuna sessione da creare, far scadere e ripulire, e nessun dato
+# di conversazione conservato a nostra insaputa. Chi chiude la pagina ha
+# davvero chiuso la conversazione.
+#
+# IL VERO PROBLEMA NON E' RICORDARE, E' QUANTO RICORDARE. Il contesto di un
+# modello e' finito e ogni token del prompt si paga a ogni turno: una
+# conversazione lunga costa in modo crescente, all'infinito. Serve una
+# politica esplicita, ed e' qui sotto.
+# --------------------------------------------------------------------------
+
+# Tre scambi completi. Nelle conversazioni di abbinamento il riferimento e'
+# quasi sempre al turno immediatamente precedente ("e con il pesce?"): oltre
+# i tre scambi si paga contesto che nessuno usera'.
+MAX_MESSAGGI_STORICO = 6
+
+# Tetto duro in caratteri, indipendente dal numero di messaggi: basta una
+# risposta lunga perche' sei messaggi corti diventino un prompt enorme.
+# Contare i messaggi senza contare la lunghezza e' una protezione finta.
+BUDGET_CARATTERI_STORICO = 4000
+
+# Sotto questa lunghezza una domanda e' quasi certamente un seguito e non si
+# regge da sola ("e col pesce?", "perche'?", "e l'altro?").
+SOGLIA_DOMANDA_DIPENDENTE = 40
+
+
+class Messaggio(BaseModel):
+    ruolo: Literal["user", "assistant"]
+    contenuto: str
+
+
+def _finestra_scorrevole(storico: list[Messaggio]) -> list[Messaggio]:
+    """Applica il budget: tiene i messaggi PIU' RECENTI entro i due limiti.
+
+    Si scarta dal fondo (cioe' dall'inizio della conversazione) perche' in un
+    dialogo di abbinamento il valore dell'informazione decade in fretta: il
+    piatto nominato due turni fa conta, quello di dieci turni fa no.
+
+    L'alternativa piu' sofisticata sarebbe riassumere i turni vecchi con una
+    chiamata al modello invece di buttarli. Non e' stata adottata di
+    proposito: costerebbe una chiamata in piu' a ogni turno, e su domande di
+    abbinamento non c'e' quasi nulla da riassumere. E' una tecnica che
+    conviene alle conversazioni lunghe e narrative, non a questa.
+    """
+    finestra: list[Messaggio] = []
+    caratteri = 0
+
+    for messaggio in reversed(storico):
+        if len(finestra) >= MAX_MESSAGGI_STORICO:
+            break
+        caratteri += len(messaggio.contenuto)
+        if caratteri > BUDGET_CARATTERI_STORICO:
+            break
+        finestra.append(messaggio)
+
+    finestra.reverse()
+    return finestra
+
+
+def _query_di_recupero(domanda: str, storico: list[Messaggio]) -> str:
+    """Costruisce la query per il RETRIEVER, che non e' la domanda dell'utente.
+
+    E' il punto meno ovvio di tutta la funzionalita'. Dare memoria al modello
+    e dimenticarsene per il recupero PEGGIORA il RAG proprio quando la
+    conversazione diventa naturale: "e con il pesce?" come query di ricerca
+    non contiene quasi nulla di cercabile, e il retrieval ibrido - che si
+    regge anche sulla corrispondenza lessicale - resta senza appigli.
+
+    Quando la domanda e' corta, e quindi probabilmente un seguito, si
+    ricostruisce una query autonoma anteponendo l'ultima domanda dell'utente.
+
+    E' un'euristica, non una riscrittura semantica. La soluzione completa
+    sarebbe chiedere al modello di riformulare il seguito in una domanda che
+    si regge da sola (query condensation), ma costerebbe una chiamata in piu'
+    PRIMA di ogni recupero, cioe' raddoppierebbe la latenza percepita per
+    risolvere un problema che la concatenazione risolve quasi sempre. Il
+    limite e' dichiarato: se l'utente cambia argomento con una domanda corta,
+    la query trascina un contesto ormai superato.
+    """
+    if len(domanda.strip()) >= SOGLIA_DOMANDA_DIPENDENTE:
+        return domanda
+
+    precedenti = [m.contenuto for m in storico if m.ruolo == "user"]
+    if not precedenti:
+        return domanda
+
+    return f"{precedenti[-1]} {domanda}"
+
+
 class SommelierRequest(BaseModel):
     question: str
     wine_id: int | None = None
+    storico: list[Messaggio] = []
 
 
 class SommelierResponse(BaseModel):
@@ -1603,6 +1701,11 @@ class SommelierResponse(BaseModel):
     demo_mode: bool
     sources: list[str] = []
     metriche: MetricheLLM | None = None
+    # Quanti messaggi precedenti sono stati effettivamente inviati al modello.
+    # Esposto perche' la finestra scorrevole e' invisibile: senza questo
+    # numero, quando SVEVA "dimentica" qualcosa sembra un difetto e non una
+    # politica di budget.
+    messaggi_ricordati: int = 0
 
 
 @app.post("/api/sommelier", response_model=SommelierResponse)
@@ -1643,16 +1746,22 @@ def ask_sommelier(payload: SommelierRequest):
             f"Abbinamento suggerito dal sistema: {wine_row['food_pairing']}."
         )
 
+    finestra = _finestra_scorrevole(payload.storico)
+
+    # La query di ricerca NON e' la domanda: un seguito come "e con il pesce?"
+    # non contiene nulla di cercabile e lascerebbe il retriever senza appigli.
+    query_recupero = _query_di_recupero(payload.question, finestra)
+
     retriever = state.get("retriever")
     rag_context = ""
     sources: list[str] = []
     ms_recupero: int | None = None
-    if retriever is not None and payload.question.strip():
+    if retriever is not None and query_recupero.strip():
         inizio_recupero = time.perf_counter()
-        retrieved = retriever.search(payload.question, top_k=3)
+        retrieved = retriever.search(query_recupero, top_k=3)
         sources = retrieved
         if retrieved:
-            rag_context = "\n\n" + retriever.build_context(payload.question, top_k=3)
+            rag_context = "\n\n" + retriever.build_context(query_recupero, top_k=3)
         ms_recupero = int((time.perf_counter() - inizio_recupero) * 1000)
 
     if not api_key or api_key == "metti_qui_la_tua_chiave":
@@ -1674,6 +1783,7 @@ def ask_sommelier(payload: SommelierRequest):
             "demo_mode": True,
             "sources": sources,
             "metriche": {"ms_recupero": ms_recupero},
+            "messaggi_ricordati": len(finestra),
         }
 
     try:
@@ -1688,8 +1798,17 @@ def ask_sommelier(payload: SommelierRequest):
                 "model": model_name,
                 "max_tokens": 1500,
                 "reasoning": {"effort": "low"},
+                # Lo storico sta FRA il prompt di sistema e la domanda
+                # corrente. I dati del vino e i passaggi RAG restano attaccati
+                # solo all'ultimo messaggio: ripeterli a ogni turno passato
+                # moltiplicherebbe i token senza aggiungere nulla, e il
+                # contesto recuperato ora e' quello pertinente adesso.
                 "messages": [
                     {"role": "system", "content": SYSTEM_PROMPT},
+                    *(
+                        {"role": m.ruolo, "content": m.contenuto}
+                        for m in finestra
+                    ),
                     {"role": "user", "content": payload.question + wine_context + rag_context},
                 ],
             },
@@ -1724,6 +1843,7 @@ def ask_sommelier(payload: SommelierRequest):
             "demo_mode": False,
             "sources": sources,
             "metriche": metriche,
+            "messaggi_ricordati": len(finestra),
         }
     except Exception as e:
         logger.exception("Errore nella chiamata all'LLM")
