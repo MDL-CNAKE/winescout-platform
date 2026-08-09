@@ -159,16 +159,43 @@ e imposta `OPENROUTER_API_KEY`. Senza chiave l'app funziona comunque in modalita
 
 ## Modello di Machine Learning
 
-Confronto tra 3 algoritmi con 5-fold cross-validation (`compare_models.py`):
+Confronto tra 3 algoritmi con 5-fold cross-validation **raggruppata**
+(`compare_models.py`):
 
 | Modello           | RMSE (media) | MAE (media) | R2 (media) |
 |--------------------|:---:|:---:|:---:|
-| RandomForest       | 0.603 | 0.430 | 0.522 |
-| GradientBoosting    | 0.683 | 0.534 | 0.387 |
-| LinearRegression    | 0.734 | 0.570 | 0.292 |
+| RandomForest       | 0.684 | 0.525 | 0.385 |
+| GradientBoosting    | 0.695 | 0.542 | 0.364 |
+| LinearRegression    | 0.735 | 0.571 | 0.289 |
 
-RandomForestRegressor scelto per le metriche migliori su tutte e tre le dimensioni.
-Modello finale valutato anche su un test set indipendente (20%): RMSE 0.569, R2 0.561.
+RandomForestRegressor scelto perché primo su tutte e tre le dimensioni. Il
+vantaggio però è modesto: contro il GradientBoosting sono 0.021 di R², con uno
+scarto tipo di 0.015 sull'RMSE fra i fold.
+
+Modello finale su test set del 20% senza righe condivise: **RMSE 0.680, MAE
+0.528, R² 0.397**.
+
+### Perché "raggruppata", e perché i numeri sono più bassi di quanto ci si aspetti
+
+Il dataset UCI contiene **1.177 righe perfettamente identiche su 6.497**
+(18%). Uno split casuale ne manda una in addestramento e la copia in test: il
+modello viene premiato per averla memorizzata.
+
+Per gran parte dello sviluppo il progetto ha dichiarato R² 0.522 in CV e 0.561
+su test. Erano gonfiati del 29%. La cross-validation non protegge da questo
+problema — `KFold(shuffle=True)` sparge le copie fra i fold esattamente come
+uno split casuale.
+
+Raggruppando per firma chimica le copie non attraversano mai la divisione. I
+numeri qui sopra sono più bassi e sono quelli veri. L'analisi completa, con la
+misura del gonfiaggio e l'effetto asimmetrico sui tre algoritmi, è in
+[docs/model_limitations.md](docs/model_limitations.md); gli script sono
+`src/eda.py` e `src/models/leakage_experiment.py`.
+
+**Come leggere un R² di 0.40.** Il 77% dei vini sta nelle sole classi 5 e 6:
+predire sempre "5,6" sbaglierebbe poco. Su un target così compresso, con le
+sole variabili chimiche e senza vitigno, annata o vinificazione, spiegare il
+40% della varianza è coerente con la letteratura su questo dataset.
 
 ### Feature engineering: provato, non adottato
 
