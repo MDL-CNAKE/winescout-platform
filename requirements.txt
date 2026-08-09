@@ -4,6 +4,12 @@
 pandas>=2.0.0
 numpy>=1.24.0
 scikit-learn>=1.3.0
+
+# Analisi esplorativa (src/eda.py): grafici salvati su file, mai mostrati a
+# schermo. Non servono al backend in produzione ma stanno qui perche'
+# l'analisi dev'essere riproducibile da chi scarica il progetto.
+matplotlib>=3.7.0
+seaborn>=0.13.0
 streamlit>=1.30.0
 requests>=2.31.0
 mysql-connector-python>=8.0.0

@@ -1,12 +1,19 @@
 """Addestra il modello di predizione della qualita del vino.
 
 La scelta di RandomForestRegressor non e' arbitraria: e' stata confrontata
-con GradientBoosting e LinearRegression tramite 5-fold cross-validation in
-compare_models.py, risultando nettamente migliore su tutte le metriche
-(RMSE 0.603 vs 0.683 vs 0.734, R2 0.522 vs 0.387 vs 0.292). Questo script
-riporta sia le metriche di cross-validation (stima robusta e generalizzabile)
-sia quelle su un test set indipendente (valutazione finale del modello che
-verra' effettivamente salvato e usato in produzione).
+con GradientBoosting e LinearRegression tramite cross-validation in
+compare_models.py, risultando migliore su tutte le metriche.
+
+VALUTAZIONE RAGGRUPPATA. Il dataset contiene 1.177 righe perfettamente
+duplicate su 6.497 (18%). Uno split casuale ne manda una in addestramento e la
+copia in test, e il modello viene premiato per averla memorizzata: le prime
+versioni di questo script riportavano R2 0.522 in CV e 0.561 su test, valori
+gonfiati di circa il 29%. Ora sia la cross-validation sia lo split finale
+raggruppano per firma chimica, cosi' le copie non attraversano mai la
+divisione. Le metriche che escono sono piu' basse e sono quelle vere.
+
+L'analisi che ha portato alla scoperta e' in src/eda.py, la misura del
+gonfiaggio in src/models/leakage_experiment.py.
 """
 import sys
 import os
@@ -19,7 +26,7 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import KFold, cross_validate, train_test_split
+from sklearn.model_selection import GroupKFold, GroupShuffleSplit, cross_validate
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
@@ -68,28 +75,62 @@ def build_pipeline() -> Pipeline:
     ])
 
 
+def firma_chimica(df: pd.DataFrame) -> pd.Series:
+    """Identificativo di gruppo per righe chimicamente identiche.
+
+    Il dataset contiene 1.177 righe perfettamente duplicate su 6.497 (18%).
+    Con uno split casuale una riga finisce in addestramento e la sua copia in
+    test: il modello viene valutato su dati che ha gia' memorizzato, e la
+    memorizzazione e' cio' che una Random Forest fa meglio.
+
+    Raggruppando per firma chimica, le copie restano sempre dalla stessa parte
+    dello split. Misurato in src/models/leakage_experiment.py: senza questo
+    accorgimento l'R2 passava da 0.398 a 0.561, cioe' il 29% del punteggio
+    veniva da righe gia' viste.
+
+    Si raggruppa invece di deduplicare per non buttare il 18% dei dati: le
+    copie restano utili in addestramento, devono solo smettere di comparire
+    in valutazione.
+    """
+    return df[NUM].astype(str).agg("|".join, axis=1)
+
+
 def main() -> None:
     df = load_from_db()
     X, y = df[CAT + NUM], df["quality"]
+    gruppi = firma_chimica(df)
 
-    # --- Fase 1: cross-validation, per una stima robusta delle metriche ---
-    # Un singolo train/test split puo essere ottimista o pessimista per caso;
-    # la media su 5 fold e' una stima piu affidabile delle performance reali.
-    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+    # --- Fase 1: cross-validation raggruppata ---
+    # ATTENZIONE: KFold(shuffle=True) NON protegge da questo problema, perche'
+    # sparge le copie fra i fold esattamente come farebbe uno split casuale.
+    # La cross-validation e' una difesa contro la sfortuna del singolo split,
+    # non contro la contaminazione dei dati. Serve GroupKFold.
+    cv = GroupKFold(n_splits=5)
     scoring = {"rmse": "neg_root_mean_squared_error", "mae": "neg_mean_absolute_error", "r2": "r2"}
-    scores = cross_validate(build_pipeline(), X, y, cv=cv, scoring=scoring, n_jobs=-1)
-    print(f"5-fold CV - RMSE: {-np.mean(scores['test_rmse']):.3f} (+/- {np.std(scores['test_rmse']):.3f}) | "
+    scores = cross_validate(
+        build_pipeline(), X, y, groups=gruppi, cv=cv, scoring=scoring, n_jobs=-1
+    )
+    print(f"5-fold CV raggruppata - RMSE: {-np.mean(scores['test_rmse']):.3f} "
+          f"(+/- {np.std(scores['test_rmse']):.3f}) | "
           f"MAE: {-np.mean(scores['test_mae']):.3f} | R2: {np.mean(scores['test_r2']):.3f}")
 
-    # --- Fase 2: modello finale su train/test split, quello effettivamente salvato ---
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=df["type"])
+    # --- Fase 2: modello finale, valutato su un test set senza copie ---
+    # Si perde la stratificazione per tipo che train_test_split consentiva:
+    # con 6.497 righe e una ripartizione rosso/bianco molto sbilanciata il
+    # campionamento casuale dei gruppi la rispetta comunque a sufficienza, e
+    # l'assenza di fuga vale piu' della stratificazione perfetta.
+    splitter = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+    idx_train, idx_test = next(splitter.split(X, y, groups=gruppi))
+    X_train, X_test = X.iloc[idx_train], X.iloc[idx_test]
+    y_train, y_test = y.iloc[idx_train], y.iloc[idx_test]
+
     model = build_pipeline()
     model.fit(X_train, y_train)
     pred = model.predict(X_test)
     rmse = mean_squared_error(y_test, pred) ** 0.5
-    print(f"Test set ({len(y_test)} vini) - RMSE: {rmse:.3f} | "
-          f"MAE: {mean_absolute_error(y_test, pred):.3f} | R2: {r2_score(y_test, pred):.3f}")
+    print(f"Test set ({len(y_test)} vini, nessuna copia condivisa col train) - "
+          f"RMSE: {rmse:.3f} | MAE: {mean_absolute_error(y_test, pred):.3f} | "
+          f"R2: {r2_score(y_test, pred):.3f}")
 
     Path("models").mkdir(exist_ok=True)
     joblib.dump(model, "models/quality_model.pkl")
