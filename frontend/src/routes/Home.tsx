@@ -10,7 +10,7 @@
  */
 import { useEffect, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { searchWines, fetchWineFacets, type SortOption } from "../api";
+import { searchWines, fetchWineFacets, urlExportCatalogo, type SortOption } from "../api";
 import { FilterBar, EMPTY_FILTERS, type Filters } from "../components/FilterBar";
 import { WineGridCard } from "../components/WineGridCard";
 import { Pagination } from "../components/Pagination";
@@ -71,6 +71,28 @@ export function Home() {
 
       {data && data.items.length > 0 && (
         <>
+          {/* L'export sta accanto al conteggio, non in fondo alla pagina:
+              chi lo cerca lo cerca dopo aver filtrato, non dopo aver
+              scorso tutte le referenze. Esporta l'intero risultato, non la
+              pagina a schermo, e il numero lo dice esplicitamente per non
+              lasciare dubbi. */}
+          <div className="export-riga">
+            <a
+              className="btn-secondario"
+              href={urlExportCatalogo({ ...filters, sort })}
+              download
+            >
+              Scarica CSV ({data.total} referenze)
+            </a>
+            <span className="caption">
+              Separatori per Excel italiano.{" "}
+              <a href={urlExportCatalogo({ ...filters, sort }, "en")} download>
+                Versione internazionale
+              </a>{" "}
+              per Power Query e pandas.
+            </span>
+          </div>
+
           <div className="wine-grid">
             {data.items.map((w) => (
               <WineGridCard

@@ -35,7 +35,9 @@ export function Conservazione() {
         <h2>Conservazione del magazzino</h2>
         <p className="hint">
           I lotti più esposti in cima: quelli da immettere sul mercato prima che
-          il tempo lavori contro di loro.
+          il tempo lavori contro di loro. È una vista sull'<strong>intero
+          magazzino</strong> — per gli indicatori di un singolo lotto apri la
+          sua scheda.
         </p>
       </header>
 

@@ -1,6 +1,14 @@
 /**
- * Pagina Predizione: form con gli stessi 11 parametri chimici della
- * versione Streamlit, invia a POST /api/predict e mostra il punteggio.
+ * Predizione su un lotto NON ancora a catalogo.
+ *
+ * Non duplica la scheda Predizione della pagina vino, e la differenza e'
+ * sostanziale: li' i valori sono quelli di un lotto esistente, gia' compilati
+ * e non modificabili; qui si inseriscono a mano.
+ *
+ * Il caso d'uso e' quello dell'enologo con un'analisi in mano e una vasca in
+ * lavorazione: il vino non e' in catalogo perche' non e' ancora imbottigliato.
+ * E' anche il modo per rispondere a "e se abbassassi l'acidita' volatile?"
+ * senza toccare i dati di un lotto reale.
  */
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -61,8 +69,9 @@ export function Predizione() {
           Predizione Punteggio Qualità
         </h2>
         <p className="hint">
-          Inserisci le caratteristiche chimiche del vino per ottenere una stima
-          del punteggio (0-10) generata dal modello di machine learning.
+          Per un lotto <strong>non ancora a catalogo</strong>: inserisci i valori
+          dell'analisi e ottieni la stima del punteggio (0-10). Per un vino già in
+          catalogo apri la sua scheda, dove i valori sono già compilati.
         </p>
       </header>
 

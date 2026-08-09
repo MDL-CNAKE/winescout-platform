@@ -1,9 +1,19 @@
 /**
- * Galleria packaging: formato bottiglia, tappo ed etichetta derivati dal
- * profilo reale di ogni vino (qualità, prezzo, "Riserva" nel nome) via
- * endpoint backend /api/packaging. La bottiglia e' generata dai dati del
- * vino (BottleIcon), non e' una foto di repertorio: colore e capsula
- * riflettono tipo, gradazione e qualita' reali.
+ * Galleria packaging: confronto trasversale degli stili sull'intero catalogo.
+ *
+ * Non duplica la scheda Packaging della pagina vino: li' si vede la
+ * confezione di UN lotto, qui si vedono tutti insieme filtrati per stile. La
+ * domanda a cui risponde e' "quante referenze ho in fascia Elegante e come si
+ * presentano accanto", che su una scheda singola non si puo' porre.
+ *
+ * Formato bottiglia, tappo ed etichetta arrivano da /api/packaging e sono
+ * derivati da qualita' e prezzo. NON dalla dicitura "Riserva": e' stata
+ * rimossa dai nomi perche' nel diritto vitivinicolo indica un affinamento
+ * minimo di cui il dataset non ha traccia.
+ *
+ * La bottiglia e' disegnata dai dati del vino (BottleIcon), non e' una foto
+ * di repertorio: colore e capsula riflettono tipo, gradazione e qualita'
+ * reali.
  */
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -32,8 +42,9 @@ export function Packaging() {
       <div className="page-header">
         <h2>Packaging & Etichette</h2>
         <p className="hint">
-          Formato bottiglia, tappo ed etichetta derivati dal profilo reale di ogni vino
-          (qualità, prezzo, dicitura "Riserva").
+          Formato bottiglia, tappo ed etichetta derivati da qualità e prezzo di ogni
+          lotto. È il confronto <strong>fra stili sull'intero catalogo</strong> — per
+          la confezione di un singolo vino apri la sua scheda.
         </p>
       </div>
       <div className="filters">
