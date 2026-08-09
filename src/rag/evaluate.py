@@ -69,8 +69,10 @@ onesta della sua portata, non una validazione statistica.
 
 Uso: python src/rag/evaluate.py
 """
-import sys
+import json
 import os
+import sys
+from pathlib import Path
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
@@ -133,6 +135,43 @@ STRATEGIE = ["ibrida", "semantica", "lessicale"]
 TOP_K = 5
 
 
+# --------------------------------------------------------------------------
+# Insieme esteso, generato da src/rag/genera_domande.py
+#
+# Le 12 domande scritte a mano restano: sono la serie storica con cui tutti i
+# numeri di questo progetto sono stati confrontati finora, e cancellarle
+# renderebbe incomparabile tutto cio' che e' stato misurato prima.
+#
+# Le domande generate si aggiungono e sono divise in due:
+# - SVILUPPO: si guarda mentre si tarano i parametri;
+# - VERIFICA: si guarda solo per dichiarare un risultato.
+#
+# Il codice NON impedisce di leggere l'insieme di verifica - sarebbe teatro,
+# basta aprire il file. Lo tiene separato e lo dichiara, che e' l'unica cosa
+# che una convenzione del genere puo' davvero fare.
+# --------------------------------------------------------------------------
+
+DOMANDE_GENERATE = Path("docs/rag_eval/domande.json")
+
+
+def carica_generate(insieme: str) -> list[tuple[str, str, list[str]]]:
+    """Domande generate appartenenti all'insieme richiesto.
+
+    Le voci marcate "scartata" vengono ignorate: restano nel file come traccia
+    del perche' un caso e' stato giudicato non valido, invece di sparire senza
+    lasciare memoria.
+    """
+    if not DOMANDE_GENERATE.exists():
+        return []
+
+    voci = json.loads(DOMANDE_GENERATE.read_text(encoding="utf-8"))
+    return [
+        (v["domanda"], v["documento_atteso"], [])
+        for v in voci
+        if v.get("insieme") == insieme and not v.get("scartata")
+    ]
+
+
 def posizione_corretta(passaggi: list[str], attesi: list[str]) -> int | None:
     """Posizione (1-based) del primo passaggio appartenente a un documento atteso."""
     for i, p in enumerate(passaggi, 1):
@@ -142,19 +181,26 @@ def posizione_corretta(passaggi: list[str], attesi: list[str]) -> int | None:
     return None
 
 
-def valuta(retriever: KnowledgeRetriever, strategia: str, top_k: int = TOP_K) -> dict:
+def valuta(
+    retriever: KnowledgeRetriever,
+    strategia: str,
+    top_k: int = TOP_K,
+    domande: list | None = None,
+) -> dict:
     """Hit rate e MRR di una strategia, in versione stretta e ampia.
 
     Il recupero viene eseguito UNA volta per domanda e valutato due volte con
     riferimenti diversi: cosi' i due punteggi descrivono lo stesso identico
     comportamento del sistema, non due esecuzioni che potrebbero divergere.
     """
+    elenco = DOMANDE if domande is None else domande
+
     esiti = {
         "stretto": {"trovati": 0, "reciproci": 0.0, "fallimenti": []},
         "ampio": {"trovati": 0, "reciproci": 0.0, "fallimenti": []},
     }
 
-    for domanda, stretto, altri in DOMANDE:
+    for domanda, stretto, altri in elenco:
         passaggi = retriever.search(domanda, top_k=top_k, strategia=strategia)
 
         for chiave, attesi in (("stretto", [stretto]), ("ampio", [stretto] + altri)):
@@ -165,7 +211,7 @@ def valuta(retriever: KnowledgeRetriever, strategia: str, top_k: int = TOP_K) ->
                 esiti[chiave]["trovati"] += 1
                 esiti[chiave]["reciproci"] += 1.0 / pos
 
-    n = len(DOMANDE)
+    n = len(elenco)
     return {
         chiave: {
             "hit_rate": e["trovati"] / n,
@@ -262,6 +308,31 @@ def main() -> None:
     print("documento corretto, che non si sposta se si aggiungono posti in")
     print("fondo. Se sale l'hit rate ma non l'MRR, il documento giusto e'")
     print("stato recuperato ma sta in coda, dietro a passaggi meno pertinenti.")
+
+    # Insieme esteso, se e' stato generato.
+    sviluppo = carica_generate("sviluppo")
+    verifica = carica_generate("verifica")
+
+    if sviluppo or verifica:
+        print("\n" + "-" * 60)
+        print("INSIEME ESTESO (domande generate, ground truth automatica)")
+        print("-" * 60)
+        print(f"{'insieme':<12} {'n':>4} {'hit@' + str(TOP_K):>8} {'MRR':>8}")
+
+        for nome, elenco in (("sviluppo", sviluppo), ("verifica", verifica)):
+            if not elenco:
+                continue
+            r = valuta(retriever, "ibrida", domande=elenco)["stretto"]
+            print(f"{nome:<12} {len(elenco):>4} {r['hit_rate']:>7.0%} {r['mrr']:>8.3f}")
+
+        print()
+        print("Le 12 domande scritte a mano restano sopra: sono la serie storica")
+        print("con cui tutti i numeri precedenti sono stati confrontati.")
+        print()
+        print("Se sviluppo e verifica danno risultati simili, le scelte fatte")
+        print("guardando il primo reggono anche su domande mai consultate. Se il")
+        print("secondo e' molto piu' basso, i parametri sono stati adattati alle")
+        print("domande di sviluppo e non al problema.")
 
     # Il controllo che smaschera l'autoinganno.
     stretto = esiti["ibrida"]["stretto"]["hit_rate"]

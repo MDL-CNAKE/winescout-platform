@@ -873,3 +873,86 @@ trovato nel dataset del modello. Per una stima onesta servirebbe un secondo
 insieme di domande, tenuto da parte e mai consultato durante le scelte di
 progettazione — ed è il miglioramento più utile che questa valutazione possa
 ricevere.
+
+## Un insieme di valutazione più grande, e cosa è costato costruirlo
+
+Tutte le misure sul RAG erano fatte su **12 domande scritte a mano**. Con 12
+domande una sola risposta sbagliata vale 8 punti percentuali: si è discusso di
+uno scarto fra 67% e 75% che era, letteralmente, una domanda. Nessuna delle
+decisioni prese su quei numeri era statisticamente sostenuta.
+
+### Come sono state prodotte
+
+Per ogni passaggio della knowledge base si chiede al modello: *"quale domanda
+farebbe un vignaiolo, se questo testo fosse la risposta?"*. La ground truth è
+automatica — il documento da cui la domanda nasce — ed è l'unico motivo per
+cui se ne possono generare decine senza etichettarle una per una.
+
+**Il rischio, dichiarato prima di misurarlo.** Una domanda generata da un testo
+tende a riusarne le parole, e il retrieval ibrido di questo progetto si regge
+anche sulla corrispondenza lessicale: un insieme così costruito la
+avvantaggerebbe artificialmente. Due contromisure — il prompt vieta i termini
+tecnici del passaggio, e lo script *misura* la sovrapposizione lessicale.
+Risultato: **0,12 di media**, una sola domanda sopra 0,50. La contromisura ha
+funzionato.
+
+### Tre problemi trovati, tutti nei dati e non nel codice
+
+**1. Squilibrio (61,5% su un documento).** Il documento sui piatti è più lungo,
+produce più chunk, genera più domande. L'insieme aveva ereditato la
+**struttura della knowledge base** invece di rispecchiare le domande reali.
+Corretto con un tetto di 8 domande per documento, scartando per prime quelle
+con sovrapposizione lessicale più alta.
+
+**2. Ground truth sbagliata nel 13% dei casi** (5 su 38). Il presupposto —
+*"il chunk che ha ispirato la domanda è quello che la risponde meglio"* — è
+falso. Tutti gli errori nello stesso verso: il modello, davanti a un passaggio
+teorico, scriveva comunque domande su piatti concreti.
+
+| domanda | atteso automatico | corretto |
+|---|---|---|
+| "tagliere di salumi molto unti" | Principio fondamentale | Grassezza e untuosità |
+| "secco o dolce per il dessert" | Principio fondamentale | Dolcezza |
+| "sushi molto speziato" | Esempio ndole | Tendenza amara e piccantezza |
+
+Altre 5 domande sono state scartate: due quasi-duplicati e tre troppo vaghe
+(*"Ho una cena importante stasera, come scelgo il vino?"* ha per risposta
+l'intera knowledge base).
+
+**3. I documenti teorici restavano scoperti.** Dopo le correzioni, "Principio
+fondamentale" aveva **una sola** domanda. Non è sfortuna: un generatore che
+parte dai documenti produce le domande che i documenti *suggeriscono*, non
+quelle che al corpus mancano. Le domande sul metodo — *"il vino deve
+assomigliare al piatto o fare da contrasto?"* — non le scrive mai, perché non
+è così che parlano le persone davanti a un testo su un piatto. Aggiunte 9
+domande a mano, con sovrapposizione lessicale 0,17 contro 0,12 delle generate:
+leggermente più facili, quindi senza svantaggio artificiale sui documenti che
+coprono.
+
+### Due insiemi: sviluppo e verifica
+
+Le 47 domande sono divise in **sviluppo** (36, su cui si tarano i parametri) e
+**verifica** (11, consultato solo per dichiarare un risultato). È la
+correzione del difetto documentato più sopra: `top_k` era stato scelto
+guardando le stesse domande su cui veniva poi misurato.
+
+La divisione è **deterministica**, calcolata dall'hash del testo di ogni
+domanda: aggiungerne di nuove non sposta le esistenti fra i due insiemi, che
+renderebbe incomparabile ogni misura precedente.
+
+| insieme | n | hit@5 | MRR |
+|---|---|---|---|
+| sviluppo | 36 | 89% | 0,485 |
+| **verifica** | 11 | **91%** | 0,571 |
+
+**Verifica non è più basso di sviluppo.** Le scelte fatte guardando il primo
+reggono su domande mai viste: nessun segno di adattamento al set di sviluppo.
+
+**Limite residuo, e non è piccolo.** Undici domande di verifica sono poche —
+una vale 9 punti percentuali. La concordanza fra i due insiemi è
+rassicurante, non è una prova. E la ground truth resta decisa da chi ha
+scritto la knowledge base: un giudizio esterno la sposterebbe in modi che non
+possiamo prevedere.
+
+**Cosa insegna, in una riga.** La generazione sintetica fa risparmiare la
+scrittura delle domande, non il giudizio su quale sia la risposta giusta.

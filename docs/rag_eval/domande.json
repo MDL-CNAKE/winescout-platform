@@ -1,0 +1,660 @@
+[
+  {
+    "domanda": "Che vino scelgo per un tagliere di salumi molto unti?",
+    "documento_atteso": "Principio fondamentale dell'abbinamento cibo-vino",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.17,
+    "scartata": false
+  },
+  {
+    "domanda": "Come devo orientarmi per un regalo di vino per una cena a base di pesce?",
+    "documento_atteso": "Principio fondamentale dell'abbinamento cibo-vino",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.12,
+    "scartata": false
+  },
+  {
+    "domanda": "Che vino devo prendere per un tagliere di salumi e formaggi?",
+    "documento_atteso": "Principio fondamentale dell'abbinamento cibo-vino",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.17,
+    "scartata": false
+  },
+  {
+    "domanda": "Meglio un vino secco o uno dolce per accompagnare il dessert?",
+    "documento_atteso": "Principio fondamentale dell'abbinamento cibo-vino",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.33,
+    "scartata": false
+  },
+  {
+    "domanda": "Quale vino devo scegliere per un risotto ai funghi porcini?",
+    "documento_atteso": "Principio fondamentale dell'abbinamento cibo-vino",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.14,
+    "scartata": false
+  },
+  {
+    "domanda": "Ho una cena con amici e vorrei evitare che il vino copra il sapore del cibo.",
+    "documento_atteso": "Principio fondamentale dell'abbinamento cibo-vino",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.25,
+    "scartata": false
+  },
+  {
+    "domanda": "Quale vino devo servire con un tagliere di formaggi e salumi?",
+    "documento_atteso": "Grassezza e untuosita del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.14,
+    "scartata": false
+  },
+  {
+    "domanda": "Che tipo di vino si abbina bene con un piatto fritto?",
+    "documento_atteso": "Grassezza e untuosita del cibo",
+    "insieme": "verifica",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Quale vino devo prendere per un tagliere di salumi e formaggi?",
+    "documento_atteso": "Grassezza e untuosita del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Che vino si abbina bene con un filetto al burro per non stancarsi subito?",
+    "documento_atteso": "Grassezza e untuosita del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Quale vino devo comprare per accompagnare un tagliere di formaggi e crostini con burro?",
+    "documento_atteso": "Grassezza e untuosita del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.22,
+    "scartata": false
+  },
+  {
+    "domanda": "Che vino si beve meglio con dei piatti molto pesanti come fritto misto o piatti con tanta panna?",
+    "documento_atteso": "Grassezza e untuosita del cibo",
+    "insieme": "verifica",
+    "sovrapposizione": 0.09,
+    "scartata": false
+  },
+  {
+    "domanda": "Che vino scelgo per un tagliere di prosciutto e pecorino?",
+    "documento_atteso": "Sapidita e succulenza del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Ho cucinato uno stufato di carne, che vino mi consigliate?",
+    "documento_atteso": "Sapidita e succulenza del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Quale vino rosso mi consigliate per una tagliata di manzo al sangue?",
+    "documento_atteso": "Sapidita e succulenza del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Che vino devo comprare per una cena a base di arrosti?",
+    "documento_atteso": "Sapidita e succulenza del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Quale vino devo prendere per un tagliere di carciofi e frattaglie?",
+    "documento_atteso": "Tendenza amara e piccantezza del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.14,
+    "scartata": false
+  },
+  {
+    "domanda": "Che vino mi consigli per una cena con piatti alla brace e verdure grigliate?",
+    "documento_atteso": "Tendenza amara e piccantezza del cibo",
+    "insieme": "verifica",
+    "sovrapposizione": 0.25,
+    "scartata": false
+  },
+  {
+    "domanda": "Che vino devo prendere per accompagnare una torta alle mandorle?",
+    "documento_atteso": "Dolcezza e tendenza dolce del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.14,
+    "scartata": false
+  },
+  {
+    "domanda": "Posso servire un Prosecco secco durante la cena con il dessert?",
+    "documento_atteso": "Dolcezza e tendenza dolce del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.29,
+    "scartata": false
+  },
+  {
+    "domanda": "Quale vino devo aprire per accompagnare un piatto di gnocchi al burro?",
+    "documento_atteso": "Dolcezza e tendenza dolce del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Cosa mi consigliate per una cena a base di carne dolce e patate?",
+    "documento_atteso": "Dolcezza e tendenza dolce del cibo",
+    "insieme": "verifica",
+    "sovrapposizione": 0.29,
+    "scartata": false
+  },
+  {
+    "domanda": "Che vino devo comprare per accompagnare un piatto tipico del camerun come l'ndole?",
+    "documento_atteso": "Esempio cross-culturale: come abbinare un piatto non europeo (ndole)",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.33,
+    "scartata": false
+  },
+  {
+    "domanda": "Posso abbinare un vino rosso a un piatto speziato africano?",
+    "documento_atteso": "Esempio cross-culturale: come abbinare un piatto non europeo (ndole)",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.29,
+    "scartata": false
+  },
+  {
+    "domanda": "Quale vino devo comprare per accompagnare un piatto di ndole con arachidi e gamberi?",
+    "documento_atteso": "Esempio cross-culturale: come abbinare un piatto non europeo (ndole)",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.44,
+    "scartata": false
+  },
+  {
+    "domanda": "Ho una cena con piatti africani molto speziati, che vino mi consigliate?",
+    "documento_atteso": "Esempio cross-culturale: come abbinare un piatto non europeo (ndole)",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Quale vino mi consigliate per un piatto di ndole con le arachidi?",
+    "documento_atteso": "Esempio cross-culturale: come abbinare un piatto non europeo (ndole)",
+    "insieme": "verifica",
+    "sovrapposizione": 0.5,
+    "scartata": false
+  },
+  {
+    "domanda": "Ho una cena con piatti africani molto speziati, che tipo di vino aperto devo comprare?",
+    "documento_atteso": "Esempio cross-culturale: come abbinare un piatto non europeo (ndole)",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.1,
+    "scartata": false
+  },
+  {
+    "domanda": "Che vino prendo per un piatto di sushi molto speziato?",
+    "documento_atteso": "Esempio cross-culturale: come abbinare un piatto non europeo (ndole)",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.17,
+    "scartata": false
+  },
+  {
+    "domanda": "Come scelgo un vino per una cena a tema esotico?",
+    "documento_atteso": "Esempio cross-culturale: come abbinare un piatto non europeo (ndole)",
+    "insieme": "verifica",
+    "sovrapposizione": 0.17,
+    "scartata": false
+  },
+  {
+    "domanda": "Che vino devo aprire per una carbonara fatta in casa?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.17,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino si sposa meglio con un tagliere di prosciutto crudo e melone?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.25,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino mi consigli per un tagliere di formaggi stagionati?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Ho una cena importante stasera, come scelgo il vino giusto per i miei ospiti?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Che vino si beve con la carbonara per non sentire il troppo condimento?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.17,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Cosa regalo per una cena con piatti molto conditi?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.17,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Cosa ci bevo per non stancarmi con gli spaghetti cacio e pepe?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.33,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Che vino mi consigli per una cena a base di formaggi salati e pepe?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.29,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino rosso mi consigliate per un piatto di tagliatelle al ragù?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.14,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Che tipo di vino devo comprare per una cena a base di carne e salsa?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.12,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino bianco mi consigli per un piatto di trofie al pesto fatto in casa?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.22,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Ho una cena con amici e vorrei un vino leggero che non copra il sapore del basilico.",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.12,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Che vino devo comprare per accompagnare un risotto allo zafferano?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.29,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Ho una cena con piatti molto conditi, che tipo di vino mi consigli?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.14,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino rosso mi consigliate per una lasagna fatta in casa?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.14,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Che vino devo comprare per accompagnare un primo piatto con molta besciamella?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.12,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino rosso strutturato devo prendere per accompagnare una fiorentina al sangue?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.11,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Cosa mi consigli per una cena importante dove servirò tagli di carne rossa molto succosi?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.27,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Che vino rosso mi consigliate per un brasato al sugo?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.4,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Ho una cena con carne stufata, meglio un vino corposo o leggero?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Quale vino mi consigliate per un classico pollo arrosto della domenica?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.38,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Ho un pollo con la pelle croccante, meglio un bianco o un rosso leggero?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.29,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino mi consigliate per un tagliere di prosciutto e salumi?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.33,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Cosa devo bere se mangio qualcosa di molto unto e salato?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.12,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Che vino si beve con l'arrostito di maiale?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.25,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale bollicina mi consigli per sgrassare dopo un piatto di pesce fritto?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.12,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Che vino bianco consiglio per un pesce grigliato senza coprire il sapore?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.25,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Ho una cena con pesce alla brace, meglio un vino leggero o qualcosa di strutturato?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.22,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino scelgo per dei carpacci di pesce?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Cosa mi consigliate per una cena a base di frutti di mare?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.17,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino devo prendere per non sbagliare con la baccalà mantecata?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.14,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Che vino si beve con un piatto di carciofi o cicoria?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.6,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Che vino mi consigli per un tagliere di pecorino stagionato?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.2,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino devo prendere per accompagnare i formaggi al gorgonzola?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.29,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Che vino devo prendere per accompagnare delle zucchine o dei peperoni alla griglia?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.11,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino mi consigli per non sbagliare durante una cena con il tiramisù?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.14,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino mi consigliate per accompagnare una torta fondente?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Ho bisogno di un vino da regalo per qualcuno che ama i dessert al cioccolato.",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.17,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino si sposa meglio con una crostata di ciliegie fatta in casa?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Che vino regalo per una serata con biscotti e dolcetti secchi?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Quale vino devo servire con un piatto molto speziato al curry?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.12,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Ho una cena a tema indiano, che tipo di vino bianco mi consigli per non far sentire troppo l'alcol?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.2,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino si accosta bene al pesce crudo senza coprirne il sapore?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "verifica",
+    "sovrapposizione": 0.0,
+    "scartata": false
+  },
+  {
+    "domanda": "Cosa offro come vino per una cena a base di sushi?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.14,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Quale vino mi consigliate per accompagnare una tajine con uvetta e mandorle?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.14,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Ho comprato dei kimchi fermentati, che etichetta devo cercare per non sbagliare abbinamento?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.25,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Che vino si beve con i tacos piccanti?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.25,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Cosa regalo per una cena a base di piatti messicani?",
+    "documento_atteso": "Piatti comuni scomposti nelle loro sensazioni",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.17,
+    "scartata": true,
+    "motivo": "bilanciamento: documento sovrarappresentato"
+  },
+  {
+    "domanda": "Il vino deve assomigliare al piatto o fare da contrasto?",
+    "documento_atteso": "Principio fondamentale dell'abbinamento cibo-vino",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.33,
+    "scartata": false,
+    "origine": "manuale"
+  },
+  {
+    "domanda": "Esiste una regola generale per non sbagliare l'abbinamento?",
+    "documento_atteso": "Principio fondamentale dell'abbinamento cibo-vino",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.4,
+    "scartata": false,
+    "origine": "manuale"
+  },
+  {
+    "domanda": "Come faccio a capire se un vino sta bene con quello che ho cucinato?",
+    "documento_atteso": "Principio fondamentale dell'abbinamento cibo-vino",
+    "insieme": "verifica",
+    "sovrapposizione": 0.14,
+    "scartata": false,
+    "origine": "manuale"
+  },
+  {
+    "domanda": "Conta piu' il tipo di carne o come e' cucinata?",
+    "documento_atteso": "Principio fondamentale dell'abbinamento cibo-vino",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false,
+    "origine": "manuale"
+  },
+  {
+    "domanda": "Perche' certi abbinamenti che sembrano sensati poi non funzionano?",
+    "documento_atteso": "Principio fondamentale dell'abbinamento cibo-vino",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.0,
+    "scartata": false,
+    "origine": "manuale"
+  },
+  {
+    "domanda": "Che vino prendo per un piatto che pizzica parecchio?",
+    "documento_atteso": "Tendenza amara e piccantezza del cibo",
+    "insieme": "verifica",
+    "sovrapposizione": 0.0,
+    "scartata": false,
+    "origine": "manuale"
+  },
+  {
+    "domanda": "Con le verdure amare come la cicoria cosa si beve?",
+    "documento_atteso": "Tendenza amara e piccantezza del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.33,
+    "scartata": false,
+    "origine": "manuale"
+  },
+  {
+    "domanda": "Il vino rosso peggiora il bruciore dei piatti piccanti?",
+    "documento_atteso": "Tendenza amara e piccantezza del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.17,
+    "scartata": false,
+    "origine": "manuale"
+  },
+  {
+    "domanda": "Che vino metto in tavola con una cena a base di radicchio e carciofi?",
+    "documento_atteso": "Tendenza amara e piccantezza del cibo",
+    "insieme": "sviluppo",
+    "sovrapposizione": 0.14,
+    "scartata": false,
+    "origine": "manuale"
+  }
+]
