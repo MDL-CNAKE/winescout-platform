@@ -104,6 +104,7 @@ def firma_chimica(df: pd.DataFrame) -> pd.Series:
 
 
 def main() -> None:
+    """Addestra, valuta senza fuga e salva il modello in models/quality_model.pkl."""
     df = load_from_db()
     X, y = df[CAT + NUM], df["quality"]
     gruppi = firma_chimica(df)

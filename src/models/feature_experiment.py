@@ -101,6 +101,7 @@ DERIVATE = [
 
 
 def carica() -> pd.DataFrame:
+    """Legge il dataset e aggiunge le variabili derivate da valutare."""
     df = pd.read_csv(CSV)
     df.columns = [c.replace(" ", "_") for c in df.columns]
     df = df.rename(columns={"pH": "ph"})
@@ -117,6 +118,7 @@ def carica() -> pd.DataFrame:
 
 
 def pipeline(colonne: list[str], regressore):
+    """Pipeline con l'insieme di variabili passato, per confrontare a parita' di preprocessing."""
     return Pipeline([
         ("pre", ColumnTransformer([
             ("num", StandardScaler(), colonne),
@@ -127,6 +129,7 @@ def pipeline(colonne: list[str], regressore):
 
 
 def valuta(df: pd.DataFrame, nome: str, colonne: list[str], regressore, folds: int = 3):
+    """Metriche in cross-validation per un dato insieme di variabili."""
     X, y = df[["type"] + colonne], df["quality"]
     cv = KFold(n_splits=folds, shuffle=True, random_state=42)
     s = cross_validate(pipeline(colonne, regressore), X, y, cv=cv, scoring="r2", n_jobs=-1)
@@ -146,6 +149,7 @@ def valuta(df: pd.DataFrame, nome: str, colonne: list[str], regressore, folds: i
 
 
 def main() -> None:
+    """Esegue l'esperimento e stampa il confronto con e senza le variabili derivate."""
     df = carica()
 
     def rf():

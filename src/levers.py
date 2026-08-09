@@ -99,6 +99,17 @@ LEVE: list[Leva] = [
 
 @dataclass
 class EffettoLeva:
+    """Effetto stimato di UN intervento su un singolo parametro.
+
+    "Stimato" e' la parola che conta: e' il modello a dire che spostando quel
+    valore la qualita' prevista salirebbe, e il modello ha imparato
+    correlazioni, non rapporti di causa. In cantina un parametro non si muove
+    da solo — abbassare il pH sposta anche la solforosa attiva — quindi il
+    numero indica dove guardare, non quanto si otterra' davvero.
+
+    Il calcolo e' un controfattuale a un fattore per volta: proprio per
+    questo non vanno sommati piu' effetti fra loro.
+    """
     campo: str
     etichetta: str
     unita: str

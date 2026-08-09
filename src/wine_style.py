@@ -59,6 +59,17 @@ def sweetness_category(sugar: float, acidity: float) -> str:
 # --- Corpo (gradazione alcolica) ----------------------------------------
 
 def body_category(alcohol: float) -> str:
+    """Corpo del vino stimato dal grado alcolico.
+
+    L'alcol non e' il corpo, ma ne e' il migliore indicatore disponibile qui:
+    la struttura dipende anche da estratto secco, glicerina e tannini, che il
+    dataset non contiene. Le soglie (9,5 e 12,0% vol) seguono l'uso corrente
+    nella descrizione dei vini da tavola.
+
+    E' anche la variabile piu' correlata con la qualita' percepita (+0.444,
+    vedi src/eda.py), il che rende la classificazione coerente con il resto
+    della piattaforma invece che una scala parallela.
+    """
     if alcohol >= 12.0:
         return "corposo"
     if alcohol <= 9.5:

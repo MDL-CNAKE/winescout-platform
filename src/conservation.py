@@ -77,6 +77,14 @@ class Indicatore:
 
 @dataclass
 class Conservazione:
+    """Esito complessivo sulla tenuta di un lotto nel tempo.
+
+    Il punteggio serve a ORDINARE, non a certificare: dice quale lotto
+    conviene far partire per primo, non per quanti mesi durera'. Gli
+    indicatori restano accanto proprio per questo — un numero solo
+    nasconderebbe quale parametro sta tirando giu' il giudizio, che e'
+    l'unica cosa su cui si puo' intervenire in cantina.
+    """
     punteggio: int                    # 0-100, per ordinare il catalogo
     giudizio: str                     # sintesi in una parola
     indicatori: list[Indicatore]

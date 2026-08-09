@@ -79,6 +79,7 @@ def firma_chimica(df: pd.DataFrame) -> pd.Series:
 
 
 def confronta(X, y, cv, gruppi=None) -> pd.DataFrame:
+    """Esegue i tre modelli con la strategia di CV indicata e restituisce le metriche medie."""
     scoring = {"rmse": "neg_root_mean_squared_error",
                "mae": "neg_mean_absolute_error", "r2": "r2"}
     righe = []
@@ -97,6 +98,7 @@ def confronta(X, y, cv, gruppi=None) -> pd.DataFrame:
 
 
 def main() -> None:
+    """Confronta i tre algoritmi con CV contaminata e raggruppata, e stampa il divario."""
     df = load_from_db()
     X, y = df[CAT + NUM], df["quality"]
     gruppi = firma_chimica(df)

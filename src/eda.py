@@ -62,6 +62,7 @@ CHIMICHE = [
 
 
 def carica() -> pd.DataFrame:
+    """Legge il CSV unificato prodotto da src/data_loader.py."""
     return pd.read_csv(CSV)
 
 
@@ -180,6 +181,7 @@ def anomalie(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def main() -> None:
+    """Esegue l'analisi e salva i grafici in docs/eda/."""
     USCITA.mkdir(parents=True, exist_ok=True)
     sns.set_theme(style="whitegrid", font_scale=0.9)
 

@@ -118,6 +118,17 @@ SIGNIFICATO = {
 
 @dataclass
 class VariabileImportanza:
+    """Quanto una variabile pesa sulla previsione, con la sua incertezza.
+
+    `incertezza` sta accanto a `importanza` di proposito: la permutazione e'
+    un procedimento casuale, e un valore alto con dispersione altrettanto alta
+    non e' distinguibile da uno basso. Mostrare la media da sola inviterebbe a
+    leggere differenze che non esistono.
+
+    `quota` e' calcolata sui soli contributi positivi: i negativi sono rumore
+    (mescolare una colonna ha per caso migliorato la previsione) e sommarli
+    falserebbe il totale.
+    """
     campo: str
     etichetta: str
     importanza: float       # calo di R2 quando la variabile viene mescolata

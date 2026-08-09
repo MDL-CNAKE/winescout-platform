@@ -94,6 +94,7 @@ def posizione_corretta(passaggi: list[str], atteso: str) -> int | None:
 
 
 def valuta(retriever: KnowledgeRetriever, strategia: str) -> dict:
+    """Hit rate e MRR di una strategia di recupero sull'insieme di domande."""
     trovati = 0
     somma_reciproci = 0.0
     fallimenti = []
@@ -116,6 +117,7 @@ def valuta(retriever: KnowledgeRetriever, strategia: str) -> dict:
 
 
 def main() -> None:
+    """Valuta le tre strategie di recupero e stampa hit rate e MRR."""
     retriever = KnowledgeRetriever()
 
     print(f"Valutazione del retrieval su {len(DOMANDE)} domande, top_k={TOP_K}\n")

@@ -83,6 +83,7 @@ def sql_escape(s: str) -> str:
 
 
 def main() -> None:
+    """Genera il file SQL con gli abbinamenti di tutti i lotti."""
     df = pd.read_csv(CSV).reset_index(drop=True)
     df.columns = [c.replace(" ", "_") for c in df.columns]
     df["id"] = df.index + 1  # stesso ordine di generate_seed.py

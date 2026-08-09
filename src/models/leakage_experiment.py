@@ -84,6 +84,7 @@ def firma_chimica(df: pd.DataFrame) -> pd.Series:
 
 
 def valuta(X_train, X_test, y_train, y_test) -> dict:
+    """Addestra sul train indicato e restituisce le metriche sul test."""
     model = build_pipeline()
     model.fit(X_train, y_train)
     pred = model.predict(X_test)
@@ -97,6 +98,7 @@ def valuta(X_train, X_test, y_train, y_test) -> dict:
 
 
 def scenario_attuale(df: pd.DataFrame) -> dict:
+    """Split casuale su tutti i dati: e' cio' che faceva train.py prima della correzione."""
     X, y = df[CAT + NUM], df["quality"]
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=df["type"]
@@ -105,6 +107,7 @@ def scenario_attuale(df: pd.DataFrame) -> dict:
 
 
 def scenario_deduplicato(df: pd.DataFrame) -> dict:
+    """Copie rimosse e poi split: elimina la fuga ma riduce anche il dataset del 18%."""
     pulito = df.drop_duplicates()
     X, y = pulito[CAT + NUM], pulito["quality"]
     X_train, X_test, y_train, y_test = train_test_split(
@@ -141,6 +144,7 @@ def cross_validation(df: pd.DataFrame) -> tuple[float, float]:
 
 
 def main() -> None:
+    """Esegue i tre scenari e stampa quanto del punteggio viene dalla fuga."""
     df = carica()
     print(f"Dataset: {len(df)} righe, {len(df.drop_duplicates())} uniche "
           f"({df.duplicated().sum()} duplicati)\n")

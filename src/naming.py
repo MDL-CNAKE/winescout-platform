@@ -56,6 +56,22 @@ def second_descriptor(sugar: float, acidity: float, ph: float) -> str:
 
 
 def build_name(row: pd.Series, wine_id: int) -> str:
+    """Compone il nome descrittivo di un lotto: tipo, corpo, carattere, lotto.
+
+    Il nome e' DERIVATO dalla chimica, non commerciale: "Rosso Corposo
+    Armonico - Lotto #0042" dice come si presenta il vino, non come si chiama.
+    E' una scelta obbligata dai dati — il dataset UCI non contiene vitigno,
+    annata ne' denominazione — e inventarli sarebbe presentare come reale
+    un'informazione plausibile ma non verificabile.
+
+    Il numero di lotto serve a distinguere vini con chimica simile, che
+    riceverebbero altrimenti nomi identici: il dataset ne contiene molti.
+
+    Args:
+        row: riga del dataset, con nomi di colonna nella forma con underscore
+            o con spazi (il CSV UCI originale usa gli spazi).
+        wine_id: identificativo, usato per il numero di lotto.
+    """
     base = "Rosso" if row["type"] == "red" else "Bianco"
     sugar = row["residual_sugar"] if "residual_sugar" in row else row["residual sugar"]
     acidity = row["fixed_acidity"] if "fixed_acidity" in row else row["fixed acidity"]
@@ -67,6 +83,7 @@ def build_name(row: pd.Series, wine_id: int) -> str:
 
 
 def main() -> None:
+    """Genera il file SQL con i nomi descrittivi di tutti i lotti."""
     df = pd.read_csv(CSV).reset_index(drop=True)
     df.columns = [c.replace(" ", "_") for c in df.columns]
     df["id"] = df.index + 1  # stesso ordine di generate_seed.py / pricing.py

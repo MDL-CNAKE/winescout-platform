@@ -54,6 +54,7 @@ def compute_margin(price: float, type_: str) -> float:
 
 
 def main() -> None:
+    """Genera il file SQL con prezzi e margini di tutti i lotti."""
     df = pd.read_csv(CSV).reset_index(drop=True)
     # L'id qui deve combaciare con l'ordine di inserimento usato da
     # generate_seed.py (stesso CSV, stesso ordine di lettura), altrimenti

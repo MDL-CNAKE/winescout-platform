@@ -82,6 +82,7 @@ def load_chunks() -> tuple[list[str], list[str]]:
 
 
 def main() -> None:
+    """Costruisce l'indice ChromaDB dalla knowledge base."""
     texts, ids = load_chunks()
     print(f"Knowledge base spezzata in {len(texts)} chunk")
 
