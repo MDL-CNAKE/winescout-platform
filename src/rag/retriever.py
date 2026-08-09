@@ -16,6 +16,21 @@ CHROMA_DIR = "data/chroma"
 COLLECTION = "enologia"
 MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
+# Quanti passaggi finiscono nel prompt. Non e' un numero di comodo: e' un
+# compromesso fra copertura e costo, perche' ogni passaggio si paga a ogni
+# domanda. E' stato scelto misurando (src/rag/evaluate.py):
+#
+#   top_k    hit rate@k
+#     3         67%
+#     4         75%
+#     5         92%   <- ginocchio della curva
+#     6         92%
+#
+# A 3 posti i documenti sensoriali venivano recuperati ma restavano in quarta
+# e quinta posizione, dietro al documento sui piatti; a 6 non si guadagna piu'
+# nulla e si paga contesto inutile.
+TOP_K_PREDEFINITO = 5
+
 
 class KnowledgeRetriever:
     """Ricerca semantica sulla knowledge base enologica.
@@ -76,7 +91,7 @@ class KnowledgeRetriever:
         return sorted(lexical_scores, key=lexical_scores.get, reverse=True)
 
     def search(
-        self, question: str, top_k: int = 3, strategia: str = "ibrida"
+        self, question: str, top_k: int = TOP_K_PREDEFINITO, strategia: str = "ibrida"
     ) -> list[str]:
         """Restituisce i top_k passaggi piu pertinenti con ricerca IBRIDA.
 
@@ -117,10 +132,13 @@ class KnowledgeRetriever:
 
         all_docs = self.collection.get()["documents"]
 
+        # La diversificazione si applica a tutte e tre le strategie: se solo
+        # l'ibrida ne beneficiasse, il confronto misurerebbe due differenze
+        # insieme invece di isolare la fusione dei ranking.
         if strategia == "semantica":
-            return self._ranking_semantico(question, all_docs)[:top_k]
+            return self._diversifica(self._ranking_semantico(question, all_docs), top_k)
         if strategia == "lessicale":
-            return self._ranking_lessicale(question, all_docs)[:top_k]
+            return self._diversifica(self._ranking_lessicale(question, all_docs), top_k)
 
         semantic = self._ranking_semantico(question, all_docs)
         lexical = self._ranking_lessicale(question, all_docs)
@@ -134,9 +152,57 @@ class KnowledgeRetriever:
             scores[doc] = scores.get(doc, 0.0) + 1.0 / (K + rank)
 
         ordered = sorted(scores, key=scores.get, reverse=True)
-        return ordered[:top_k]
+        return self._diversifica(ordered, top_k)
 
-    def build_context(self, question: str, top_k: int = 3) -> str:
+    def _diversifica(self, ordinati: list[str], top_k: int) -> list[str]:
+        """Impedisce a un solo documento di occupare tutti i posti disponibili.
+
+        PERCHE' SERVE, MISURATO. Con l'aggiunta del documento sui piatti
+        comuni - lungo e diviso in molte sezioni, quindi molti chunk - una
+        domanda come "cosa bevo con una carbonara?" riempiva tutti e tre i
+        posti con chunk dello stesso documento. Il risultato apparente era
+        ottimo (hit rate 100% contando quel documento come corretto) ma il
+        recupero era peggiorato: l'LLM riceveva la scomposizione del piatto
+        SENZA la regola di abbinamento che sta nel documento sensoriale.
+
+        Il rilevamento e' stato possibile solo perche' la valutazione teneva
+        ferma la ground truth originale: col solo criterio allargato il
+        peggioramento sarebbe passato per un miglioramento.
+
+        COME. Si scorre il ranking fuso e si accetta al massimo un chunk per
+        documento finche' ci sono documenti diversi; se i posti avanzano si
+        completa con i migliori rimasti. Un documento molto pertinente non
+        viene quindi escluso, ma non puo' piu' monopolizzare il contesto.
+
+        E' una forma minima di diversificazione dei risultati: la variante
+        classica (Maximal Marginal Relevance) misura la ridondanza fra
+        embedding, mentre qui basta il documento di provenienza, perche' la
+        knowledge base e' fatta di pochi documenti tematici ben separati.
+        """
+        scelti: list[str] = []
+        visti: set[str] = set()
+
+        for chunk in ordinati:
+            if len(scelti) >= top_k:
+                break
+            titolo = chunk.split("\n")[0]
+            if titolo not in visti:
+                scelti.append(chunk)
+                visti.add(titolo)
+
+        # Posti avanzati: si completa con i migliori scartati, mantenendo
+        # l'ordine di rilevanza. Succede quando i documenti distinti sono
+        # meno di top_k.
+        if len(scelti) < top_k:
+            for chunk in ordinati:
+                if len(scelti) >= top_k:
+                    break
+                if chunk not in scelti:
+                    scelti.append(chunk)
+
+        return scelti
+
+    def build_context(self, question: str, top_k: int = TOP_K_PREDEFINITO) -> str:
         """Restituisce i passaggi recuperati gia formattati per il prompt."""
         passages = self.search(question, top_k)
         if not passages:

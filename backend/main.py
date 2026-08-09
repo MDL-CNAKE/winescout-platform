@@ -9,16 +9,21 @@ quelle validate nella versione Streamlit.
 """
 import os
 import re
+import io
+import csv
 import json
 import time
 import logging
 from typing import Literal
+from decimal import Decimal
+from datetime import datetime
 from contextlib import asynccontextmanager
 
 import joblib
 import pandas as pd
 import requests
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -272,6 +277,55 @@ SORT_OPTIONS = {
 
 MAX_PAGE_SIZE = 60
 
+# Colonne esposte dal catalogo, in un unico posto: la ricerca e l'export
+# devono restituire le stesse, altrimenti chi scarica ottiene qualcosa di
+# diverso da quello che ha visto a schermo.
+COLONNE_CATALOGO = (
+    "id, name, type, alcohol, ph, residual_sugar, fixed_acidity, "
+    "volatile_acidity, chlorides, sulphates, quality, price_eur, "
+    "margin_pct, food_pairing"
+)
+
+
+def _filtri_catalogo(
+    type: str | None, min_quality: int | None,
+    min_alcohol: float | None, max_alcohol: float | None,
+    min_sugar: float | None, max_sugar: float | None,
+    min_acidity: float | None, max_acidity: float | None,
+    min_price: float | None, max_price: float | None,
+) -> tuple[str, list]:
+    """Costruisce la clausola WHERE condivisa da ricerca ed export.
+
+    Estratta in una funzione sola perche' l'export DEVE applicare
+    esattamente i filtri della ricerca: se le due implementazioni
+    divergessero, chi scarica otterrebbe un file diverso da cio' che ha
+    visto a schermo, e non avrebbe modo di accorgersene.
+    """
+    if type is not None and type not in ("red", "white"):
+        raise HTTPException(status_code=400, detail="Tipo non valido: usare 'red' o 'white'")
+
+    conditions: list[str] = []
+    params: list = []
+
+    def add(clause: str, value) -> None:
+        if value is not None:
+            conditions.append(clause)
+            params.append(value)
+
+    add("type = %s", type)
+    add("quality >= %s", min_quality)
+    add("alcohol >= %s", min_alcohol)
+    add("alcohol <= %s", max_alcohol)
+    add("residual_sugar >= %s", min_sugar)
+    add("residual_sugar <= %s", max_sugar)
+    add("fixed_acidity >= %s", min_acidity)
+    add("fixed_acidity <= %s", max_acidity)
+    add("price_eur >= %s", min_price)
+    add("price_eur <= %s", max_price)
+
+    where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    return where, params
+
 
 @app.get("/api/wines/search", response_model=WineSearchResult)
 def search_wines(
@@ -297,32 +351,14 @@ def search_wines(
     """
     if sort not in SORT_OPTIONS:
         raise HTTPException(status_code=400, detail=f"Ordinamento non valido: {sort}")
-    if type is not None and type not in ("red", "white"):
-        raise HTTPException(status_code=400, detail="Tipo non valido: usare 'red' o 'white'")
 
     page = max(1, page)
     page_size = max(1, min(page_size, MAX_PAGE_SIZE))
 
-    conditions: list[str] = []
-    params: list = []
-
-    def add(clause: str, value) -> None:
-        if value is not None:
-            conditions.append(clause)
-            params.append(value)
-
-    add("type = %s", type)
-    add("quality >= %s", min_quality)
-    add("alcohol >= %s", min_alcohol)
-    add("alcohol <= %s", max_alcohol)
-    add("residual_sugar >= %s", min_sugar)
-    add("residual_sugar <= %s", max_sugar)
-    add("fixed_acidity >= %s", min_acidity)
-    add("fixed_acidity <= %s", max_acidity)
-    add("price_eur >= %s", min_price)
-    add("price_eur <= %s", max_price)
-
-    where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    where, params = _filtri_catalogo(
+        type, min_quality, min_alcohol, max_alcohol, min_sugar, max_sugar,
+        min_acidity, max_acidity, min_price, max_price,
+    )
 
     try:
         with DatabaseConnection() as conn:
@@ -332,9 +368,7 @@ def search_wines(
             total = cursor.fetchone()["n"]
 
             cursor.execute(
-                "SELECT id, name, type, alcohol, ph, residual_sugar, "
-                "fixed_acidity, volatile_acidity, chlorides, sulphates, quality, "
-                f"price_eur, margin_pct, food_pairing FROM wines {where} "
+                f"SELECT {COLONNE_CATALOGO} FROM wines {where} "
                 f"ORDER BY {SORT_OPTIONS[sort]}, id ASC LIMIT %s OFFSET %s",
                 params + [page_size, (page - 1) * page_size],
             )
@@ -347,6 +381,138 @@ def search_wines(
     except Exception as e:
         logger.exception("Errore nella ricerca del catalogo")
         raise HTTPException(status_code=500, detail="Errore nella ricerca del catalogo") from e
+
+
+# --------------------------------------------------------------------------
+# Export del catalogo
+#
+# Chi deve decidere non lavora dentro l'applicazione: chiede la lista e la
+# apre in Excel, o la collega a Power Query. Finora l'unico modo di tirare
+# fuori i dati era ricopiarli a mano dalla griglia.
+#
+# La scelta e' deliberatamente opposta a quella di replicare un cruscotto BI
+# dentro l'app: la piattaforma produce dati puliti e filtrati, gli strumenti
+# di analisi fanno il resto. Ricostruire pivot e grafici qui dentro
+# significherebbe rifare peggio uno strumento che l'utente ha gia' e conosce.
+# --------------------------------------------------------------------------
+
+# Tetto all'export: l'intero catalogo sono 6.497 righe, ma un limite esplicito
+# evita che una query senza filtri diventi una scansione illimitata il giorno
+# in cui il catalogo cresce.
+MAX_EXPORT = 20000
+
+INTESTAZIONI_IT = {
+    "id": "ID", "name": "Nome", "type": "Tipo", "alcohol": "Alcol (% vol)",
+    "ph": "pH", "residual_sugar": "Zucchero residuo (g/L)",
+    "fixed_acidity": "Acidita fissa (g/L)",
+    "volatile_acidity": "Acidita volatile (g/L)",
+    "chlorides": "Cloruri (g/L)", "sulphates": "Solfati (g/L)",
+    "quality": "Qualita (0-10)", "price_eur": "Prezzo (EUR)",
+    "margin_pct": "Margine (%)", "food_pairing": "Abbinamento",
+}
+
+
+@app.get("/api/wines/export.csv")
+def export_wines(
+    type: str | None = None,
+    min_quality: int | None = None,
+    min_alcohol: float | None = None,
+    max_alcohol: float | None = None,
+    min_sugar: float | None = None,
+    max_sugar: float | None = None,
+    min_acidity: float | None = None,
+    max_acidity: float | None = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
+    sort: str = "quality_desc",
+    formato: str = "it",
+):
+    """Esporta in CSV il catalogo filtrato, con gli STESSI filtri della ricerca.
+
+    Il parametro `formato` non e' un vezzo di localizzazione ma un problema
+    pratico ricorrente: Excel in configurazione italiana usa il punto e
+    virgola come separatore di colonna e la virgola come separatore
+    decimale. Un CSV "standard" (virgola e punto) aperto su un computer
+    italiano finisce tutto in una colonna sola, e chi lo riceve pensa che il
+    file sia rotto.
+
+    - formato "it": separatore `;`, decimali con la virgola
+    - formato "en": separatore `,`, decimali col punto (Power Query, pandas)
+
+    Il file viene servito con BOM UTF-8: senza, Excel interpreta il testo come
+    codifica locale e le lettere accentate arrivano illeggibili.
+    """
+    if sort not in SORT_OPTIONS:
+        raise HTTPException(status_code=400, detail=f"Ordinamento non valido: {sort}")
+    if formato not in ("it", "en"):
+        raise HTTPException(status_code=400, detail="Formato non valido: usare 'it' o 'en'")
+
+    where, params = _filtri_catalogo(
+        type, min_quality, min_alcohol, max_alcohol, min_sugar, max_sugar,
+        min_acidity, max_acidity, min_price, max_price,
+    )
+
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                f"SELECT {COLONNE_CATALOGO} FROM wines {where} "
+                f"ORDER BY {SORT_OPTIONS[sort]}, id ASC LIMIT %s",
+                params + [MAX_EXPORT],
+            )
+            righe = cursor.fetchall()
+            cursor.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Errore nell'export del catalogo")
+        raise HTTPException(status_code=500, detail="Errore nell'export del catalogo") from e
+
+    campi = [c.strip() for c in COLONNE_CATALOGO.split(",")]
+    separatore = ";" if formato == "it" else ","
+    virgola_decimale = formato == "it"
+
+    def formatta(valore) -> str:
+        if valore is None:
+            return ""
+        testo = str(valore)
+        if virgola_decimale and isinstance(valore, (int, float, Decimal)):
+            testo = testo.replace(".", ",")
+        return testo
+
+    def genera():
+        buffer = io.StringIO()
+        writer = csv.writer(buffer, delimiter=separatore, lineterminator="\r\n")
+
+        # BOM: senza, Excel legge il file come codifica locale e le accentate
+        # diventano illeggibili.
+        yield "﻿"
+
+        writer.writerow([INTESTAZIONI_IT.get(c, c) for c in campi])
+        yield buffer.getvalue()
+        buffer.seek(0)
+        buffer.truncate(0)
+
+        # Si genera riga per riga invece di costruire l'intera stringa in
+        # memoria: qui sarebbero pochi MB, ma e' la forma corretta e non
+        # costa nulla adottarla subito.
+        for r in righe:
+            writer.writerow([formatta(r[c]) for c in campi])
+            yield buffer.getvalue()
+            buffer.seek(0)
+            buffer.truncate(0)
+
+    nome_file = f"catalogo_winescout_{datetime.now():%Y%m%d}.csv"
+    return StreamingResponse(
+        genera(),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{nome_file}"',
+            # Numero di righe esportate: chi scarica puo' verificare subito
+            # che corrispondano a quelle viste a schermo.
+            "X-Righe-Esportate": str(len(righe)),
+        },
+    )
 
 
 @app.get("/api/wines/{wine_id}", response_model=Wine)
@@ -684,7 +850,7 @@ def get_packaging_item(wine_id: int):
 # tabella condivisa, cosi' un collega vede cosa ha segnato l'altro.
 # --------------------------------------------------------------------------
 
-RUOLI = ("titolare", "enologo", "vendite", "logistica")
+RUOLI = ("titolare", "enologo", "vendite", "logistica", "marketing")
 
 
 class Operator(BaseModel):
@@ -1758,10 +1924,15 @@ def ask_sommelier(payload: SommelierRequest):
     ms_recupero: int | None = None
     if retriever is not None and query_recupero.strip():
         inizio_recupero = time.perf_counter()
-        retrieved = retriever.search(query_recupero, top_k=3)
+        # Nessun top_k esplicito: il valore predefinito del retriever e' stato
+        # scelto misurando (5, vedi src/rag/retriever.py). Ripeterlo qui
+        # significherebbe congelare un numero che potrebbe cambiare dopo una
+        # nuova valutazione, ed e' esattamente il tipo di duplicazione che si
+        # scopre solo quando le due copie divergono.
+        retrieved = retriever.search(query_recupero)
         sources = retrieved
         if retrieved:
-            rag_context = "\n\n" + retriever.build_context(query_recupero, top_k=3)
+            rag_context = "\n\n" + retriever.build_context(query_recupero)
         ms_recupero = int((time.perf_counter() - inizio_recupero) * 1000)
 
     if not api_key or api_key == "metti_qui_la_tua_chiave":

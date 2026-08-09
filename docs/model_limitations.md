@@ -796,3 +796,80 @@ il modello sbagliato. Ma un'importanza gonfiata arriva **all'utente finale**:
 la pagina che dice a una piccola cantina su quali parametri intervenire. Un
 enologo che avesse letto quella tabella avrebbe lavorato sul pH credendolo
 rilevante quanto i solfati.
+
+## Il divario fra piatti e sensazioni, e cosa ha insegnato
+
+La valutazione del retrieval mostrava tre domande che fallivano con **ogni**
+strategia: carbonara, tiramisù, prosciutto crudo. Diagnosi: la knowledge base
+descrive sensazioni, chi domanda nomina piatti. Lacuna nei dati, non
+nell'algoritmo.
+
+Correzione: un documento che scompone i piatti comuni nelle rispettive
+sensazioni. Non aggiunge regole — costruisce il ponte fra il linguaggio di chi
+chiede e quello del corpus.
+
+**Perché NON una tabella esaustiva di abbinamenti.** Sarebbe stata la scelta
+istintiva, e avrebbe contraddetto il metodo del progetto: la knowledge base si
+regge sulla scomposizione sensoriale, ed è per questo che il sistema sa
+affrontare il *ndole*, che in nessun ricettario italiano comparirà. Una tabella
+sostituisce il ragionamento con la ricerca a indice e fallisce sul primo piatto
+non elencato. Inoltre, come mostrato sotto, un solo documento in più aveva già
+saturato il contesto: centinaia di voci l'avrebbero monopolizzato.
+
+### La misura che ha impedito di dichiarare un successo falso
+
+Aggiunto il documento, il primo risultato sembrava trionfale: **hit rate 100%**.
+Ma il punteggio calcolato sulla ground truth originale — mai modificata — era
+**sceso** dal 75% al 67%.
+
+Era il sintomo di un peggioramento reale: il documento nuovo occupava i primi
+posti e i documenti sensoriali restavano fuori. L'LLM avrebbe ricevuto la
+scomposizione del piatto **senza la regola di abbinamento**.
+
+Tenere due riferimenti — quello dichiarato prima di vedere i risultati e quello
+allargato ai documenti aggiunti dopo — è ciò che ha reso visibile la
+differenza. Con la sola metrica allargata, il peggioramento sarebbe stato
+presentato come un 100% di successo.
+
+### Due ipotesi sbagliate, risolte guardando i dati
+
+**Prima ipotesi:** un documento lungo produce molti chunk e monopolizza i
+posti. Implementata la diversificazione dei risultati (al massimo un chunk per
+documento): l'hit rate è passato da 67% a 67%. **Nessun effetto.** La
+diversificazione è stata tenuta perché corretta in sé, ma non era il problema.
+
+**Seconda ipotesi:** il documento nuovo scalza quelli sensoriali. Stampando
+cosa veniva effettivamente recuperato si è visto che per "carbonara" ai posti
+2 e 3 c'erano *Dolcezza* e *Tendenza amara* — documenti irrilevanti. Fra i
+documenti sensoriali l'ordinamento è sostanzialmente **rumore**: non
+contengono nomi di piatti, quindi la componente lessicale non ha appigli e il
+modello semantico non discrimina.
+
+La regressione reale era **una sola** domanda (bistecca al sangue). Le altre
+tre fallivano già da prima.
+
+### La soluzione: misurare quanti passaggi servono
+
+| top_k | hit stretto | hit ampio |
+|---|---|---|
+| 3 | 67% | 100% |
+| 4 | 75% | 100% |
+| **5** | **92%** | 100% |
+| 6 | 92% | 100% |
+
+I documenti sensoriali venivano recuperati, ma in quarta e quinta posizione —
+ed è per questo che l'MRR migliora poco (0.542 → 0.596) mentre l'hit rate
+migliora molto.
+
+`top_k = 5` è il ginocchio della curva. Costo misurato: **1.530 token di
+prompt contro 1.370**, cioè +12% per +17 punti di hit rate. Il semantico puro
+guadagna anche di più (42% → 67%): era la strategia che più soffriva i tre
+posti stretti.
+
+**Avvertenza sul 92%.** Il valore di `top_k` è stato scelto guardando le
+stesse 12 domande su cui viene poi misurato: è una stima ottimistica, non un
+risultato su dati mai visti. È la versione in piccolo dello stesso errore
+trovato nel dataset del modello. Per una stima onesta servirebbe un secondo
+insieme di domande, tenuto da parte e mai consultato durante le scelte di
+progettazione — ed è il miglioramento più utile che questa valutazione possa
+ricevere.
