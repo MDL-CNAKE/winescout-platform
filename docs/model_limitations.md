@@ -603,3 +603,196 @@ inventata non poteva.
 **Costo.** Ogni giro del ciclo è una chiamata a pagamento. Il tetto è quattro
 giri: oltre, si dichiara il fallimento invece di restituire una risposta
 parziale.
+
+## Il 29% del punteggio del modello era memoria, non predizione
+
+Per gran parte dello sviluppo il progetto ha dichiarato R² 0.522 in
+cross-validation e 0.561 su test set. Erano numeri gonfiati, e la causa non
+era nel modello ma nei dati.
+
+**Cosa è successo.** Il Wine Quality dell'UCI contiene **1.177 righe
+perfettamente identiche su 6.497 — il 18% del dataset**. `train_test_split`
+divide a caso: una riga finisce in addestramento e la sua copia esatta in
+test. Il modello viene interrogato su dati che ha già memorizzato, e la
+memorizzazione è precisamente ciò che una Random Forest fa meglio.
+
+È data leakage, ma non del tipo che una `Pipeline` può prevenire: il
+preprocessing era corretto: il problema stava nella composizione dei dati.
+
+**La misura** (`python src/models/leakage_experiment.py`):
+
+| scenario | RMSE | MAE | R² |
+|---|---|---|---|
+| A. split casuale (com'era) | 0.569 | 0.403 | **0.561** |
+| C. raggruppato, nessuna fuga | 0.679 | 0.528 | **0.398** |
+| B. deduplicato | 0.675 | 0.515 | 0.373 |
+
+Il confronto che conta è **A contro C**, non A contro B. Deduplicare cambia
+due cose insieme — elimina la fuga *e* riduce il dataset del 18% — quindi un
+calo dell'R² non direbbe quale delle due l'ha causato. Lo scenario C tiene
+tutte le righe e impedisce solo alle copie di attraversare lo split
+(`GroupShuffleSplit` sulla firma chimica): stessa quantità di dati, zero fuga.
+La differenza isolata è **R² −0.163, il 29% del punteggio dichiarato**.
+
+**La cross-validation non protegge.** È il punto meno intuitivo:
+`KFold(shuffle=True)` sparge le copie fra i fold esattamente come uno split
+casuale. La CV difende dalla sfortuna di una singola divisione, non dalla
+contaminazione dei dati.
+
+| cross-validation | R² |
+|---|---|
+| KFold con shuffle (contaminata) | 0.521 |
+| GroupKFold sulla firma chimica | **0.385** |
+
+**Correzione applicata.** `src/models/train.py` usa ora `GroupKFold` e
+`GroupShuffleSplit`. Si raggruppa invece di deduplicare per non buttare il 18%
+dei dati: le copie restano utili in addestramento, devono solo smettere di
+comparire in valutazione. Si perde la stratificazione per tipo, ed è un prezzo
+accettabile — l'assenza di fuga vale più di una ripartizione rosso/bianco
+perfetta.
+
+**Cosa insegna questo episodio.** L'EDA è stata fatta dopo il modello, non
+prima, perché si è dato per scontato che un dataset accademico pubblicato e
+citato fosse pulito. Nessuna quantità di rigore a valle — Pipeline corretta,
+cross-validation, confronto fra algoritmi, permutation importance — ha
+intercettato un problema che stava a monte. Tre righe di `pandas` all'inizio
+lo avrebbero mostrato subito.
+
+**Nota su un'ipotesi smentita.** Cercando i duplicati si era ipotizzato di
+trovare vini con chimica identica e voto diverso, cioè assaggiatori in
+disaccordo, il che avrebbe imposto un tetto teorico all'R² raggiungibile. Il
+dato dice zero: a chimica identica corrisponde sempre lo stesso voto. I
+duplicati sono copie esatte, non giudizi discordanti — innocui per la coerenza
+del target, pericolosi per la valutazione.
+
+## Esplorazione del dataset
+
+`python src/eda.py` produce i numeri e i grafici in `docs/eda/`.
+
+**Distribuzione del target.** Le sole classi 5 e 6 valgono il **76,6%** del
+dataset; la qualità 9 ha 5 esempi, la 3 ne ha 30. Un modello che predicesse
+sempre 5,6 sbaglierebbe poco: è il riferimento minimo contro cui va giudicato
+ogni risultato, e spiega perché un R² di 0.4 su questo dataset non è il
+fallimento che sembrerebbe altrove.
+
+**Correlazioni con la qualità.** L'alcol guida (+0.444), seguito da densità
+(−0.306) e acidità volatile (−0.266). Le altre otto variabili stanno tutte
+sotto 0.21 in valore assoluto. Densità e alcol sono fortemente legate fra
+loro, il che va tenuto presente leggendo la permutation importance: fra
+variabili correlate l'importanza si divide, e una può sembrare inutile solo
+perché l'altra la copre.
+
+**Valori anomali.** Oltre 1.5 IQR: acido citrico 7,8%, acidità volatile 5,8%,
+acidità fissa 5,5%. **Non vengono rimossi.** In enologia un valore estremo è
+spesso un lotto reale e problematico, non un errore di misura — ed è
+esattamente il lotto che interessa a chi lavora in cantina. Toglierli
+renderebbe il modello più accurato sulla media e cieco proprio dove serve.
+
+## La fuga non premiava tutti i modelli allo stesso modo
+
+Scoperto il leakage, restava una domanda: il confronto fra algoritmi che ha
+portato a scegliere la Random Forest era anch'esso viziato?
+
+L'ipotesi era che sì, e in modo *asimmetrico*. Una `LinearRegression` non può
+memorizzare una singola riga: non ne ha la capacità, può solo tracciare un
+piano. Una Random Forest con 200 alberi può, ed è precisamente ciò che fa
+meglio. Se è così, la fuga non falsa solo i valori assoluti ma il **confronto**
+— premiando i modelli ad alta capacità.
+
+`python src/models/compare_models.py` esegue lo stesso confronto due volte,
+con `KFold(shuffle=True)` e con `GroupKFold`:
+
+| modello | R² contaminato | R² raggruppato | guadagno |
+|---|---|---|---|
+| RandomForest | 0.521 | 0.385 | **+0.136** |
+| GradientBoosting | 0.390 | 0.364 | +0.026 |
+| LinearRegression | 0.292 | 0.289 | +0.003 |
+
+**Un fattore 47 fra il primo e l'ultimo.** L'ipotesi era corretta: il beneficio
+della fuga è proporzionale alla capacità di memorizzare del modello.
+
+**La classifica non cambia** — la Random Forest resta prima anche senza fuga,
+quindi la scelta dell'algoritmo regge. Ma il *margine* era gonfiato molto più
+dei valori assoluti:
+
+| confronto | vantaggio RF contaminato | vantaggio RF reale |
+|---|---|---|
+| contro LinearRegression | 0.229 | **0.095** |
+| contro GradientBoosting | 0.131 | **0.021** |
+
+Contro il GradientBoosting il vantaggio quasi sparisce: 0.021 di R², con uno
+scarto tipo di 0.015 sull'RMSE fra i fold. La Random Forest resta preferibile,
+ma la formula "nettamente migliore" che compariva nella documentazione non è
+più sostenibile ed è stata rimossa.
+
+**Perché questo caso merita attenzione.** Il leakage viene di solito
+presentato come un problema di metriche gonfiate — sgradevole ma innocuo, si
+corregge il numero e si va avanti. Qui ha rischiato di alterare una
+**decisione**: se il divario reale fosse stato negativo invece che +0.021, il
+progetto avrebbe adottato l'algoritmo sbagliato sulla base di una misura
+corretta nella forma e falsa nella sostanza.
+
+## Metriche finali, misurate senza fuga
+
+```
+5-fold CV raggruppata   RMSE 0.684 (+/- 0.015)   MAE 0.525   R2 0.385
+Test set (1310 vini)    RMSE 0.680               MAE 0.528   R2 0.397
+```
+
+CV e test set concordano (0.385 e 0.397): il modello non è né fortunato né
+sfortunato nella divisione scelta.
+
+**Come leggere un R² di 0.4.** Sembra basso, e in assoluto lo è, ma va
+confrontato con il riferimento giusto: il 76,6% dei vini sta nelle classi 5 e
+6, quindi predire sempre "5,6" sbaglierebbe poco. Su un target così compresso
+e con sole variabili chimiche — senza vitigno, annata, zona, vinificazione —
+spiegare il 40% della varianza è un risultato coerente con la letteratura su
+questo dataset. Il numero onesto è più utile di quello gonfiato: dice a chi
+usa la piattaforma quanto fidarsi di una previsione.
+
+## Anche la spiegazione del modello era contaminata
+
+L'importanza per permutazione (`src/importance.py`) si calcola su un test set:
+si mescola una colonna e si osserva quanto peggiora la previsione. Se quel
+test set contiene righe già viste in addestramento, si sta misurando quanto la
+permutazione rompe la **memoria**, non quanto danneggia la capacità di
+generalizzare — che è la domanda che ci si sta ponendo.
+
+Il file dichiarava in testa di replicare lo split di `train.py`. Non era più
+vero da quando `train.py` era passato a `GroupShuffleSplit`: una promessa di
+allineamento scritta e violata. Ora la funzione di raggruppamento viene
+**importata** da `train.py` invece di essere riscritta, così le due non
+possono più divergere.
+
+**Effetto della correzione.** Tutte le importanze calano, ma non in
+proporzione:
+
+| variabile | contaminata | pulita | calo |
+|---|---|---|---|
+| alcohol | 0.691 | 0.402 | −42% |
+| volatile_acidity | 0.369 | 0.161 | −56% |
+| free_sulfur_dioxide | 0.237 | 0.106 | −55% |
+| sulphates | 0.141 | 0.045 | −68% |
+| total_sulfur_dioxide | 0.123 | 0.028 | −77% |
+| pH | 0.094 | 0.012 | **−87%** |
+| fixed_acidity | 0.064 | 0.008 | **−87%** |
+
+Il meccanismo: su una riga memorizzata, permutare *qualunque* colonna rompe il
+riconoscimento e fa crollare la previsione. La fuga gonfia quindi l'importanza
+di tutto, e in termini relativi gonfia soprattutto le variabili deboli — che
+senza fuga non contribuiscono quasi nulla.
+
+**Conseguenze pratiche.** Il pH scende dal sesto al decimo posto: è l'unico
+cambio di ordine rilevante, e pesa perché il pH è un parametro a cui in
+cantina si guarda molto. La sua importanza era in buona parte un artefatto.
+
+E la spiegazione si semplifica: le prime tre variabili passano dal 63% al
+**78%** dell'importanza totale. Il messaggio operativo diventa più netto —
+alcol, acidità volatile e SO₂ libera, il resto è contorno.
+
+**Perché questo è il caso più serio dei tre.** Metriche gonfiate ingannano chi
+valuta il progetto. Un confronto fra algoritmi viziato può portare a scegliere
+il modello sbagliato. Ma un'importanza gonfiata arriva **all'utente finale**:
+la pagina che dice a una piccola cantina su quali parametri intervenire. Un
+enologo che avesse letto quella tabella avrebbe lavorato sul pH credendolo
+rilevante quanto i solfati.

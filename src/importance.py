@@ -13,13 +13,26 @@ reale: si mescolano a caso i valori di una colonna e si osserva **quanto
 peggiora la previsione**. Se rompere una variabile non peggiora nulla, quella
 variabile non serviva.
 
-PERCHE' SI CALCOLA SUL TEST SET
---------------------------------
+PERCHE' SI CALCOLA SU DATI MAI VISTI
+------------------------------------
 Calcolata sui dati di addestramento, l'importanza dice cosa il modello ha
 *usato*; calcolata su dati mai visti, dice cosa **generalizza**. La seconda e'
-l'unica utile a chi deve prendere decisioni. La suddivisione replica quella di
-src/models/train.py (80/20, seed 42, stratificata per tipo) in modo che il
-test set sia davvero lo stesso su cui il modello e' stato valutato.
+l'unica utile a chi deve prendere decisioni.
+
+E qui "mai visti" va preso alla lettera, ed e' il motivo per cui questo file
+e' stato corretto. Il dataset contiene 1.177 righe duplicate su 6.497 (vedi
+src/eda.py): con uno split casuale il test set conteneva righe gia' presenti
+in addestramento. Su quelle righe il modello non prevede, ricorda - e
+permutare una colonna misurava quanto la permutazione rompe la MEMORIA, non
+quanto danneggia la capacita' di generalizzare. Un'importanza calcolata cosi'
+non risponde alla domanda che ci si sta ponendo.
+
+La suddivisione usa ora GroupShuffleSplit sulla firma chimica, esattamente
+come src/models/train.py. La funzione di raggruppamento viene IMPORTATA da
+train.py invece di essere riscritta qui: due copie della stessa regola
+divergono appena una delle due cambia, ed e' precisamente quello che era
+successo - questo file dichiarava di replicare lo split di train.py molto
+dopo che train.py aveva smesso di usarlo.
 
 COSTO E CACHE
 -------------
@@ -31,7 +44,9 @@ from dataclasses import dataclass
 
 import pandas as pd
 from sklearn.inspection import permutation_importance
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupShuffleSplit
+
+from src.models.train import firma_chimica
 
 NUM = [
     "fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar",
@@ -122,9 +137,13 @@ def calcola_importanza(model, df: pd.DataFrame, n_repeats: int = 5) -> list[Vari
 
     X = df[["type"] + NUM]
     y = df["quality"]
-    _, X_test, _, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=df["type"]
-    )
+
+    # Stesso split di train.py: le righe chimicamente identiche restano dalla
+    # stessa parte, quindi il test set non contiene copie di righe viste in
+    # addestramento.
+    splitter = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+    _, idx_test = next(splitter.split(X, y, groups=firma_chimica(df)))
+    X_test, y_test = X.iloc[idx_test], y.iloc[idx_test]
 
     res = permutation_importance(
         model, X_test, y_test, n_repeats=n_repeats, random_state=42, scoring="r2"
