@@ -428,24 +428,6 @@ collasserebbe.
 Nota: il nome è scelto per un progetto accademico e non è stato verificato
 come marchio registrabile.
 
-### Il Caravaggio: perché è stato rimosso
-
-Il *Bacco adolescente* è stato a lungo lo sfondo del sito, e la scelta di
-toglierlo è documentata perché è una decisione di progetto, non un
-ripensamento estetico.
-
-È un dipinto **verticale**, mentre il contenuto dell'applicazione è una
-colonna centrale su una finestra orizzontale: i due si contendevano lo stesso
-spazio. Ogni tentativo di renderlo più visibile — sfondo pieno, fascia
-d'apertura, colonna laterale — costava leggibilità al testo o spingeva il
-catalogo sotto la piega; ogni tentativo di salvare la leggibilità lo rendeva
-invisibile. Con una home diventata catalogo denso, il conflitto non aveva
-soluzione: un quadro da museo e una tabella di dati chiedono attenzioni
-opposte.
-
-Resta però nell'identità: la **palette bordeaux, crema e oro** del sito è
-campionata dai suoi colori, e il progetto ha portato il nome Bacchus prima di
-diventare CruScout.
 
 ## Nessuna fotografia nel prodotto
 
