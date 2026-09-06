@@ -1,21 +1,81 @@
-# CruScout - Il cruscotto del piccolo produttore
+# CruScout — Il cruscotto del piccolo produttore
 
-> Dagli algoritmi al calice. Senza storie di fantasia.
+Piattaforma per piccole cantine artigianali: dalle analisi di laboratorio di un
+lotto stima la qualità, ne valuta la conservazione, propone abbinamenti e
+risponde a domande attraverso un sommelier virtuale ancorato ai dati reali.
 
-Applicazione per piccole cantine artigianali. Il catalogo e' il punto di
-partenza; da li' ogni referenza apre su predizione della qualita', leve di
-miglioramento, predisposizione alla conservazione, raccomandazioni, packaging
-e sommelier virtuale.
+Machine learning classico (scikit-learn) + AI generativa (RAG, function
+calling), backend FastAPI, frontend React, tutto in Docker.
 
-Ogni contenuto mostrato deriva dai dati reali del vino (profilo chimico, qualita
-misurata, regole enologiche): nessuna descrizione redazionale inventata. Dove il
-dato non c'e', il sistema lo dichiara invece di colmarlo — non nomina vitigni,
-non promette potenziale di invecchiamento, non deduce preferenze di mercato.
+---
+
+## Tre cose che ho trovato misurando, e che valgono più del codice
+
+**Il 29% dell'R² del modello era memoria, non predizione.**
+Il dataset UCI Wine Quality contiene 1.177 righe perfettamente duplicate su
+6.497. Con uno split casuale una copia finisce in addestramento e l'altra in
+test: il modello viene premiato per averla memorizzata. R² 0,561 → **0,398**.
+E la cross-validation non protegge — `KFold(shuffle=True)` sparge le copie fra
+i fold esattamente come uno split casuale.
+→ [l'analisi completa](docs/model_limitations.md#il-29-del-punteggio-del-modello-era-memoria-non-predizione)
+
+**La fuga di dati non è neutra fra gli algoritmi, e ha rischiato di
+farmi scegliere il modello sbagliato.**
+Guadagno da memorizzazione: RandomForest +0,136, GradientBoosting +0,026,
+LinearRegression +0,003 — **fattore 47**. Una retta non può memorizzare una
+riga, 200 alberi sì. Il vantaggio della RandomForest sul GradientBoosting
+passava da 0,131 a **0,021**: quasi una decisione presa su una misura falsa.
+
+**Ho aggiunto un documento al RAG, l'hit rate è salito al 100%, ed era un
+peggioramento.**
+Il punteggio calcolato sulla ground truth originale — mai modificata — era
+*sceso* dal 75% al 67%: il documento nuovo occupava i primi posti e le regole
+di abbinamento restavano fuori dal contesto. Tenere due criteri, uno dei quali
+non si tocca mai, è ciò che ha reso visibile la differenza.
+→ [come è stato scoperto](docs/model_limitations.md#il-divario-fra-piatti-e-sensazioni-e-cosa-ha-insegnato)
+
+---
+
+## Cosa c'è dentro
+
+| | |
+|---|---|
+| **Predizione qualità** | RandomForest in Pipeline scikit-learn, valutazione raggruppata per evitare il leakage |
+| **Conservazione** | indice deterministico da regole enologiche (SO₂ molecolare, acidità volatile, pH) — non un modello statistico |
+| **Spiegabilità** | permutation importance su dati mai visti, con l'incertezza accanto alla media |
+| **Sommelier (RAG)** | ChromaDB, ricerca ibrida semantica + lessicale IDF fusa con Reciprocal Rank Fusion, valutata con hit rate e MRR |
+| **Output strutturato** | verdetti di abbinamento validati con Pydantic, ritentativo sull'errore |
+| **Function calling** | l'LLM non conosce il catalogo: chiama strumenti tipizzati e il codice esegue le query |
+| **Memoria conversazionale** | finestra scorrevole con doppio limite, e la query di recupero ricostruita per i seguiti |
+
+**231 test automatici.** Nessun framework di orchestrazione (LangChain e simili):
+le componenti sono scritte a mano perché volevo poterle misurare separatamente —
+con un `EnsembleRetriever` non avrei potuto confrontare ricerca ibrida e
+semantica pura, e scoprire che la semantica pura era la peggiore delle tre.
+
+## Documentazione
+
+- **[Limiti del modello](docs/model_limitations.md)** — cosa non funziona, con i numeri del prima e del dopo. È il documento più utile del repository.
+- **[Dichiarazione etica](docs/dichiarazione_etica.md)** — dati trattati, cosa esce dall'installazione, bias misurati, inquadramento normativo.
+- **Le [issue chiuse](../../issues?q=is%3Aissue+is%3Aclosed)** contengono il ragionamento dietro ogni scelta, incluse quelle rivelatesi sbagliate.
+
+---
+
+## Il principio che tiene insieme il progetto
+
+Ogni contenuto mostrato deriva dai dati reali del vino: nessuna descrizione
+redazionale inventata. **Dove il dato non c'è, il sistema lo dichiara invece di
+colmarlo** — non nomina vitigni (il dataset non li contiene), non promette
+potenziale di invecchiamento, non deduce preferenze di mercato. La sezione
+Marketing elenca le analisi che *non* può fare, con accanto il dato che le
+servirebbe.
 
 Le funzioni sono organizzate per **ruolo operativo**: titolare, enologo,
-vendite e logistica vedono in navigazione gli strumenti del proprio mestiere.
+vendite, logistica e marketing vedono in navigazione gli strumenti del proprio
+mestiere.
 
-Progetto sviluppato per l'esame "Strumenti AI e Machine Learning - Python".
+> Progetto sviluppato per l'esame "Strumenti AI e Machine Learning — Python",
+> e proseguito oltre i requisiti della traccia.
 
 ## Stack tecnico
 
@@ -265,9 +325,13 @@ integrazione LLM con prompt engineering, sistema RAG, test automatici (suite
 pytest), documentazione dei limiti del modello, spiegabilita' del modello
 (importanza per permutazione).
 
-Da fare: dichiarazione etica in forma estesa, slide di presentazione.
+Da fare: slide di presentazione.
 
 ## Aspetti etici
+
+Sintesi. La versione estesa — dati trattati, cosa esce dall'installazione,
+limiti misurati, inquadramento normativo — e' in
+[docs/dichiarazione_etica.md](docs/dichiarazione_etica.md).
 
 **Bias.** Il dataset contiene solo vini portoghesi fermi (Vinho Verde): nessun
 rosato, nessuno spumante, nessuna altra regione. Il sistema non fornisce stime per
@@ -277,14 +341,21 @@ knowledge base costruita sulle sensazioni invece che sulle ricette e con ricerca
 ibrida semantica piu' lessicale.
 
 **Privacy.** Nessun dato personale nel dataset, che contiene solo misure chimiche
-pubbliche. I nomi degli operatori sono etichette di lavoro scelte dalla cantina,
-non identita' verificate, e restano sulla sua installazione. I font sono
-autoospitati e non da CDN: il browser dell'utente non invia richieste a terzi.
+pubbliche. Nessun cookie, nessun analytics, nessun banner di consenso: non c'e'
+tracciamento da autorizzare. L'unica cosa salvata sul dispositivo e' quale
+operatore hai scelto. Le conversazioni con SVEVA vivono nel browser e non sono
+archiviate sul server. Le domande poste a SVEVA vengono pero' inviate a un
+modello esterno (OpenRouter) insieme ai dati del lotto selezionato: e' l'unica
+cosa che esce dalla vostra installazione, ed e' dichiarata. I font sono
+autoospitati e non da CDN.
 
 **Trasparenza.** L'interfaccia distingue sempre la natura di cio' che mostra: un
 dato misurato, una stima del modello, un valore simulato o un testo generato da un
 LLM. Accanto a ogni risultato compaiono le metriche di validazione con i loro
-limiti, tenendo distinti R2 in cross-validation (0,52) e su test set (0,56).
+limiti: R2 **0,385** in cross-validation raggruppata e **0,397** su test set senza
+righe ripetute. Sono piu' bassi di quelli dichiarati per gran parte dello sviluppo
+(0,52 e 0,56), che erano gonfiati dai duplicati nel dataset — scoperti, misurati e
+corretti.
 
 **Confini dichiarati.** Dove il dato manca, il sistema lo dice invece di dedurlo:
 non nomina vitigni, chiama "conservazione" e non "invecchiamento" un indice che non
