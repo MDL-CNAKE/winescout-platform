@@ -144,6 +144,29 @@ export const searchWines = (query: WineQuery) => {
     .then((res) => res.data);
 };
 
+/**
+ * URL di download del catalogo filtrato.
+ *
+ * Si costruisce un URL invece di scaricare il file via axios e ricrearlo nel
+ * browser: così il download è gestito dal browser stesso — barra di
+ * avanzamento, ripresa, cartella predefinita — e il nome del file arriva
+ * dall'header `Content-Disposition` del server invece di essere inventato qui.
+ *
+ * `paginazione` è deliberatamente assente: si esporta tutto ciò che
+ * corrisponde ai filtri, non la sola pagina a schermo. Chi scarica vuole
+ * l'insieme, non le ventiquattro righe che sta guardando.
+ */
+export const urlExportCatalogo = (
+  query: Omit<WineQuery, "page" | "page_size">,
+  formato: "it" | "en" = "it",
+) => {
+  const params = new URLSearchParams();
+  Object.entries({ ...query, formato }).forEach(([k, v]) => {
+    if (v !== null && v !== undefined) params.append(k, String(v));
+  });
+  return `${api.defaults.baseURL ?? ""}/api/wines/export.csv?${params}`;
+};
+
 export const predictQuality = (input: PredictionInput) =>
   api.post<{ quality: number }>("/api/predict", input).then((res) => res.data);
 
@@ -230,7 +253,7 @@ export const fetchLeve = (wineId: number) =>
 
 /* --- Selezioni di lavoro condivise ------------------------------------ */
 
-export type Ruolo = "titolare" | "enologo" | "vendite" | "logistica";
+export type Ruolo = "titolare" | "enologo" | "vendite" | "logistica" | "marketing";
 
 export interface Operator {
   id: number;

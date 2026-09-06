@@ -19,6 +19,7 @@ const RUOLI: { value: Ruolo; label: string }[] = [
   { value: "enologo", label: "Enologo" },
   { value: "vendite", label: "Vendite" },
   { value: "logistica", label: "Logistica" },
+  { value: "marketing", label: "Marketing" },
 ];
 
 export function OperatorPicker() {

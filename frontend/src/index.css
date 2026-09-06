@@ -1737,3 +1737,74 @@ main .empty-state-title {
   background: #f1ece4;
   color: var(--bordeaux-dark, #6b1f2a);
 }
+
+/* --------------------------------------------------------------------
+   Export del catalogo
+
+   Sta sopra la griglia e non in fondo alla pagina: chi vuole scaricare
+   lo decide subito dopo aver filtrato, non dopo aver scorso tutte le
+   referenze.
+   -------------------------------------------------------------------- */
+.export-riga {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  margin: 0 0 1rem;
+}
+.export-riga a.btn-secondario {
+  display: inline-block;
+  padding: 0.45rem 1rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.88rem;
+}
+.export-riga .caption { margin: 0; }
+
+/* --------------------------------------------------------------------
+   Marketing: funzioni assenti, con il motivo
+
+   Ogni voce dichiara il dato che le manca. La differenza fra "manca" e
+   "parziale" e' segnata dal colore del bordo, ma resta scritta anche a
+   parole nell'etichetta: il colore aggiunge, non sostituisce.
+   -------------------------------------------------------------------- */
+.marketing-claim {
+  font-family: "Righteous", system-ui, sans-serif;
+  font-size: 1.3rem;
+  color: var(--bordeaux, #6d1b2f);
+  margin: 0.2rem 0 1rem;
+}
+.funzioni-mancanti {
+  list-style: none;
+  padding: 0;
+  margin: 1.4rem 0;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+}
+.funzione {
+  padding: 1rem 1.1rem;
+  background: #fbf8f3;
+  border-radius: 8px;
+  border-left: 4px solid #c9bfae;
+}
+.funzione.stato-parziale { border-left-color: #9a6b12; }
+.funzione h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  color: var(--bordeaux-dark, #6b1f2a);
+}
+.funzione p { margin: 0 0 0.6rem; font-size: 0.9rem; }
+.funzione-richiede {
+  margin: 0 !important;
+  font-size: 0.84rem !important;
+  color: #6b6357;
+}
+.funzione-etichetta {
+  display: block;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a8177;
+  margin-bottom: 0.15rem;
+}

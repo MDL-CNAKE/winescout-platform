@@ -12,6 +12,7 @@ import { Sommelier } from "./routes/Sommelier";
 import { Vino } from "./routes/Vino";
 import { Vendite } from "./routes/Vendite";
 import { Spedizioni } from "./routes/Spedizioni";
+import { Marketing } from "./routes/Marketing";
 import { BrandLockup } from "./components/BrandLockup";
 import { PoweredBy } from "./components/PoweredBy";
 import { OperatorPicker } from "./components/OperatorPicker";
@@ -33,6 +34,7 @@ const SEZIONI = [
   { to: "/conservazione", label: "Conservazione" },
   { to: "/packaging", label: "Packaging" },
   { to: "/spedizioni", label: "Spedizioni" },
+  { to: "/marketing", label: "Marketing" },
   { to: "/sommelier", label: "SVEVA" },
 ] as const;
 
@@ -42,9 +44,13 @@ const PER_RUOLO: Record<Ruolo, string[]> = {
   // L'enologo lavora sulla chimica del vino e sulla tenuta dei lotti.
   enologo: ["/", "/predizione", "/conservazione", "/sommelier"],
   // Chi vende lavora su canali, margini e presentazione del prodotto.
-  vendite: ["/", "/vendite", "/packaging", "/sommelier"],
+  vendite: ["/", "/vendite", "/packaging", "/marketing", "/sommelier"],
   // La logistica guarda cosa c'e', come e' confezionato e cosa deve partire.
   logistica: ["/", "/packaging", "/spedizioni"],
+  // Marketing e strategia: oggi la sezione dedicata e' quasi vuota, perche'
+  // i dati di vendita non esistono. Il catalogo e il suo export restano
+  // comunque il materiale su cui questo ruolo lavora davvero.
+  marketing: ["/", "/marketing", "/vendite", "/sommelier"],
 };
 
 function Layout() {
@@ -119,6 +125,12 @@ const spedizioniRoute = createRoute({
   component: Spedizioni,
 });
 
+const marketingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/marketing",
+  component: Marketing,
+});
+
 const packagingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/packaging",
@@ -143,6 +155,7 @@ const routeTree = rootRoute.addChildren([
   conservazioneRoute,
   venditeRoute,
   spedizioniRoute,
+  marketingRoute,
   packagingRoute,
   vinoRoute,
   sommelierRoute,
