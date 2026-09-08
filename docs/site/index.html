@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CruScout — Il cruscotto del piccolo produttore</title>
+<meta name="description" content="Machine learning e AI generativa per piccole cantine. Include l'analisi di un data leakage che gonfiava l'R² del 29%.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Righteous&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bordeaux: #6d1b2f;
+    --bordeaux-dark: #4a1220;
+    --bordeaux-deep: #3a0e19;
+    --gold: #c9a24b;
+    --cream: #f4ece2;
+    --bg: #faf7f2;
+    --ink: #2a2a2a;
+    --muted: #8a8177;
+    --font-ui: "Inter", "Segoe UI", system-ui, sans-serif;
+    --font-display: "Righteous", "Trebuchet MS", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--font-ui);
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  a { color: inherit; text-decoration: none; }
+
+  /* ---------- navbar ---------- */
+  .nav {
+    background: var(--bordeaux-dark);
+    padding: 14px 6vw;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .monogram {
+    width: 36px; height: 36px;
+    border: 1.5px solid var(--gold);
+    border-radius: 6px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    line-height: 1.02;
+    font-family: var(--font-display);
+    font-size: 9px; letter-spacing: 0.6px;
+  }
+  .monogram span:first-child { color: var(--cream); }
+  .monogram span:last-child  { color: var(--gold); }
+  .brand-word {
+    font-family: var(--font-display);
+    font-size: 18px; color: var(--cream); letter-spacing: 0.3px;
+  }
+  .brand-word em { font-style: normal; color: var(--gold); }
+  .nav-links { display: flex; gap: 22px; font-size: 13px; }
+  .nav-links a { color: rgba(244,236,226,0.72); }
+  .nav-links a:hover { color: var(--cream); }
+  .lang { display: flex; gap: 4px; font-size: 12px; }
+  .lang button {
+    background: transparent; border: 1px solid transparent;
+    color: rgba(244,236,226,0.6); padding: 4px 8px; border-radius: 4px;
+    cursor: pointer; font: inherit; letter-spacing: 0.5px;
+  }
+  .lang button.active { color: var(--gold); border-color: rgba(201,162,75,0.5); }
+  .lang button:hover:not(.active) { color: var(--cream); }
+
+  /* ---------- hero ---------- */
+  .hero {
+    background: var(--bordeaux-deep);
+    padding: 88px 6vw 76px;
+    text-align: center;
+  }
+  .eyebrow {
+    margin: 0 0 16px; font-size: 12px; letter-spacing: 2.6px;
+    text-transform: uppercase; color: var(--gold);
+  }
+  .hero h1 {
+    margin: 0 0 14px;
+    font-family: var(--font-display); font-weight: 400;
+    font-size: clamp(34px, 6vw, 60px); line-height: 1.06;
+    color: var(--cream); letter-spacing: -0.5px;
+  }
+  .hero p {
+    margin: 0 auto 34px; max-width: 520px;
+    font-size: 16px; line-height: 1.65; color: rgba(244,236,226,0.7);
+  }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; padding: 12px 28px; border-radius: 6px;
+    font-size: 14px; font-weight: 500; transition: background .15s, color .15s;
+  }
+  .btn-primary { background: var(--bordeaux); color: var(--cream); }
+  .btn-primary:hover { background: #8a2b3a; }
+  .btn-ghost { border: 1px solid rgba(201,162,75,0.65); color: var(--gold); }
+  .btn-ghost:hover { background: rgba(201,162,75,0.1); }
+
+  /* ---------- sections ---------- */
+  section { padding: 56px 6vw; }
+  .section-label {
+    margin: 0 0 26px; font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .grid {
+    display: grid; gap: 28px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+  .stat { border-left: 3px solid var(--bordeaux); padding-left: 16px; }
+  .stat .num {
+    margin: 0 0 6px; font-family: var(--font-display);
+    font-size: 40px; line-height: 1; color: var(--bordeaux-dark);
+  }
+  .stat p { margin: 0; font-size: 14px; line-height: 1.55; color: #4a4038; }
+  .stat a { color: var(--bordeaux); font-size: 13px; display: inline-block; margin-top: 8px; }
+  .stat a:hover { text-decoration: underline; }
+
+  .alt { background: #fff; border-top: 1px solid #ebe4d8; border-bottom: 1px solid #ebe4d8; }
+  .feat h3 {
+    margin: 0 0 6px; font-size: 15px; font-weight: 600; color: var(--bordeaux-dark);
+  }
+  .feat p { margin: 0; font-size: 14px; color: #4a4038; line-height: 1.55; }
+
+  .quote {
+    max-width: 680px; margin: 0 auto; text-align: center;
+    font-size: 19px; line-height: 1.6; color: var(--bordeaux-dark);
+  }
+  .quote small { display: block; margin-top: 14px; font-size: 13px; color: var(--muted); }
+
+  /* ---------- footer ---------- */
+  footer {
+    background: var(--bordeaux-dark); color: rgba(244,236,226,0.6);
+    padding: 34px 6vw; font-size: 13px; text-align: center; line-height: 1.8;
+  }
+  footer a { color: var(--gold); }
+
+  @media (max-width: 640px) {
+    .nav-links { display: none; }
+    .hero { padding: 64px 6vw 56px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="brand" href="#top">
+    <div class="monogram" aria-hidden="true"><span>CRU</span><span>SCT</span></div>
+    <span class="brand-word">Cru<em>Scout</em></span>
+  </a>
+  <div class="nav-links">
+    <a href="#trovato" data-i18n="nav.findings"></a>
+    <a href="#dentro" data-i18n="nav.inside"></a>
+    <a href="https://github.com/MDL-CNAKE/winescout-platform" data-i18n="nav.code"></a>
+  </div>
+  <div class="lang" role="group" aria-label="Lingua">
+    <button data-lang="it">IT</button>
+    <button data-lang="en">EN</button>
+    <button data-lang="fr">FR</button>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <p class="eyebrow" data-i18n="hero.eyebrow"></p>
+  <h1 data-i18n="hero.title"></h1>
+  <p data-i18n="hero.sub"></p>
+  <div class="cta">
+    <a class="btn btn-primary" href="#demo" data-i18n="hero.demo"></a>
+    <a class="btn btn-ghost" href="https://github.com/MDL-CNAKE/winescout-platform" data-i18n="hero.code"></a>
+  </div>
+</header>
+
+<section id="trovato">
+  <p class="section-label" data-i18n="findings.label"></p>
+  <div class="grid">
+    <div class="stat">
+      <p class="num">29%</p>
+      <p data-i18n="findings.leak"></p>
+      <a href="https://github.com/MDL-CNAKE/winescout-platform/blob/main/docs/model_limitations.md" data-i18n="findings.read"></a>
+    </div>
+    <div class="stat">
+      <p class="num">47×</p>
+      <p data-i18n="findings.asym"></p>
+      <a href="https://github.com/MDL-CNAKE/winescout-platform/blob/main/docs/model_limitations.md" data-i18n="findings.read"></a>
+    </div>
+    <div class="stat">
+      <p class="num">100%</p>
+      <p data-i18n="findings.rag"></p>
+      <a href="https://github.com/MDL-CNAKE/winescout-platform/blob/main/docs/model_limitations.md" data-i18n="findings.read"></a>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="dentro">
+  <p class="section-label" data-i18n="inside.label"></p>
+  <div class="grid">
+    <div class="feat"><h3 data-i18n="inside.ml.t"></h3><p data-i18n="inside.ml.d"></p></div>
+    <div class="feat"><h3 data-i18n="inside.rules.t"></h3><p data-i18n="inside.rules.d"></p></div>
+    <div class="feat"><h3 data-i18n="inside.rag.t"></h3><p data-i18n="inside.rag.d"></p></div>
+    <div class="feat"><h3 data-i18n="inside.tools.t"></h3><p data-i18n="inside.tools.d"></p></div>
+    <div class="feat"><h3 data-i18n="inside.eval.t"></h3><p data-i18n="inside.eval.d"></p></div>
+    <div class="feat"><h3 data-i18n="inside.stack.t"></h3><p data-i18n="inside.stack.d"></p></div>
+  </div>
+</section>
+
+<section>
+  <p class="quote">
+    <span data-i18n="quote.text"></span>
+    <small data-i18n="quote.who"></small>
+  </p>
+</section>
+
+<footer id="demo">
+  <span data-i18n="footer.demo"></span><br>
+  <a href="https://github.com/MDL-CNAKE/winescout-platform">github.com/MDL-CNAKE/winescout-platform</a><br>
+  <span data-i18n="footer.by"></span>
+</footer>
+
+<script>
+const T = {
+  it: {
+    "nav.findings": "Cosa ho misurato",
+    "nav.inside": "Contenuto",
+    "nav.code": "Codice",
+    "hero.eyebrow": "Machine learning + AI generativa",
+    "hero.title": "Il cruscotto del<br>piccolo produttore",
+    "hero.sub": "Dalle analisi di laboratorio alla decisione: quanta qualità esprime un lotto, quale conviene far uscire prima, con cosa abbinarlo.",
+    "hero.demo": "Prova la demo",
+    "hero.code": "Vedi il codice",
+    "findings.label": "Cosa ho trovato misurando",
+    "findings.leak": "dell'R² era memoria, non predizione. Il dataset conteneva 1.177 righe duplicate: con uno split casuale il modello veniva interrogato su righe che aveva già visto.",
+    "findings.asym": "quanto la fuga di dati premiava la Random Forest rispetto alla regressione lineare. Una retta non può memorizzare una riga, 200 alberi sì.",
+    "findings.rag": "l'hit rate del RAG dopo aver aggiunto un documento. Sembrava un successo: sulla ground truth originale era sceso dal 75% al 67%.",
+    "findings.read": "Leggi l'analisi →",
+    "inside.label": "Contenuto",
+    "inside.ml.t": "Predizione della qualità",
+    "inside.ml.d": "Random Forest in Pipeline scikit-learn, valutata con split raggruppato per evitare il leakage. R² 0,40 — dichiarato anche nell'interfaccia.",
+    "inside.rules.t": "Conservazione da regole",
+    "inside.rules.d": "SO₂ molecolare, acidità volatile, pH: formule enologiche, non un modello statistico. Dove una formula esatta esiste, non si predice.",
+    "inside.rag.t": "Sommelier con RAG",
+    "inside.rag.d": "Ricerca ibrida semantica + lessicale con Reciprocal Rank Fusion. Misurata: il semantico puro era la strategia peggiore.",
+    "inside.tools.t": "Function calling",
+    "inside.tools.d": "Il modello non conosce il catalogo: chiama strumenti tipizzati e il codice esegue le query. Il modello propone, il codice dispone.",
+    "inside.eval.t": "Valutazione con verifica separata",
+    "inside.eval.d": "47 domande divise in sviluppo e verifica. Ground truth generata dall'LLM e corretta a mano: sbagliava nel 13% dei casi.",
+    "inside.stack.t": "Stack",
+    "inside.stack.d": "FastAPI, React + TypeScript, MySQL con migrazioni Flyway, Docker Compose. 231 test. Nessun framework di orchestrazione.",
+    "quote.text": "Un sistema di cui si conoscono i difetti è più affidabile di uno che non ne dichiara nessuno.",
+    "quote.who": "dalla dichiarazione etica del progetto",
+    "footer.demo": "Demo online in arrivo. Nel frattempo tutto il codice, i test e la documentazione dei limiti sono su GitHub.",
+    "footer.by": "Marguerite El Mbimbey — progetto d'esame, proseguito oltre i requisiti."
+  },
+  en: {
+    "nav.findings": "What I measured",
+    "nav.inside": "Contents",
+    "nav.code": "Code",
+    "hero.eyebrow": "Machine learning + generative AI",
+    "hero.title": "The small winemaker's<br>dashboard",
+    "hero.sub": "From lab analysis to decision: how much quality a batch expresses, which one to sell first, what to pair it with.",
+    "hero.demo": "Try the demo",
+    "hero.code": "View the code",
+    "findings.label": "What I found by measuring",
+    "findings.leak": "of the model's R² was memory, not prediction. The dataset held 1,177 duplicate rows: with a random split the model was tested on rows it had already seen.",
+    "findings.asym": "how much more the data leak rewarded the Random Forest than linear regression. A line can't memorise a row; 200 trees can.",
+    "findings.rag": "RAG hit rate after adding one document. It looked like a win: against the original ground truth it had dropped from 75% to 67%.",
+    "findings.read": "Read the analysis →",
+    "inside.label": "Contents",
+    "inside.ml.t": "Quality prediction",
+    "inside.ml.d": "Random Forest in a scikit-learn Pipeline, evaluated with a grouped split to prevent leakage. R² 0.40 — stated in the interface too.",
+    "inside.rules.t": "Rule-based shelf life",
+    "inside.rules.d": "Molecular SO₂, volatile acidity, pH: oenological formulas, not a statistical model. Where an exact formula exists, don't predict.",
+    "inside.rag.t": "RAG sommelier",
+    "inside.rag.d": "Hybrid semantic + lexical retrieval fused with Reciprocal Rank Fusion. Measured: pure semantic was the worst strategy of the three.",
+    "inside.tools.t": "Function calling",
+    "inside.tools.d": "The model doesn't know the catalogue: it calls typed tools and the code runs the queries. The model proposes, the code disposes.",
+    "inside.eval.t": "Held-out evaluation",
+    "inside.eval.d": "47 questions split into development and verification. Ground truth generated by the LLM and hand-corrected: it was wrong 13% of the time.",
+    "inside.stack.t": "Stack",
+    "inside.stack.d": "FastAPI, React + TypeScript, MySQL with Flyway migrations, Docker Compose. 231 tests. No orchestration framework.",
+    "quote.text": "A system whose flaws are known is more trustworthy than one that declares none.",
+    "quote.who": "from the project's ethics statement",
+    "footer.demo": "Live demo coming soon. Meanwhile all code, tests and the documented limitations are on GitHub.",
+    "footer.by": "Marguerite El Mbimbey — exam project, continued beyond the brief."
+  },
+  fr: {
+    "nav.findings": "Ce que j'ai mesuré",
+    "nav.inside": "Contenu",
+    "nav.code": "Code",
+    "hero.eyebrow": "Machine learning + IA générative",
+    "hero.title": "Le tableau de bord<br>du petit vigneron",
+    "hero.sub": "De l'analyse de laboratoire à la décision : quelle qualité exprime un lot, lequel écouler en premier, avec quoi l'accorder.",
+    "hero.demo": "Essayer la démo",
+    "hero.code": "Voir le code",
+    "findings.label": "Ce que j'ai trouvé en mesurant",
+    "findings.leak": "du R² du modèle était de la mémoire, pas de la prédiction. Le jeu de données contenait 1 177 lignes dupliquées : avec un découpage aléatoire, le modèle était testé sur des lignes déjà vues.",
+    "findings.asym": "à quel point la fuite de données avantageait la Random Forest par rapport à la régression linéaire. Une droite ne peut pas mémoriser une ligne ; 200 arbres, oui.",
+    "findings.rag": "de taux de réussite du RAG après l'ajout d'un document. Ça ressemblait à un succès : sur la vérité terrain d'origine, il était passé de 75 % à 67 %.",
+    "findings.read": "Lire l'analyse →",
+    "inside.label": "Contenu",
+    "inside.ml.t": "Prédiction de la qualité",
+    "inside.ml.d": "Random Forest dans une Pipeline scikit-learn, évaluée avec un découpage groupé pour éviter la fuite. R² 0,40 — affiché aussi dans l'interface.",
+    "inside.rules.t": "Conservation par règles",
+    "inside.rules.d": "SO₂ moléculaire, acidité volatile, pH : des formules œnologiques, pas un modèle statistique. Là où une formule exacte existe, on ne prédit pas.",
+    "inside.rag.t": "Sommelier avec RAG",
+    "inside.rag.d": "Recherche hybride sémantique + lexicale fusionnée par Reciprocal Rank Fusion. Mesuré : le sémantique pur était la pire des trois stratégies.",
+    "inside.tools.t": "Function calling",
+    "inside.tools.d": "Le modèle ne connaît pas le catalogue : il appelle des outils typés et le code exécute les requêtes. Le modèle propose, le code dispose.",
+    "inside.eval.t": "Évaluation avec jeu de vérification",
+    "inside.eval.d": "47 questions réparties entre développement et vérification. Vérité terrain générée par le LLM puis corrigée à la main : fausse dans 13 % des cas.",
+    "inside.stack.t": "Stack",
+    "inside.stack.d": "FastAPI, React + TypeScript, MySQL avec migrations Flyway, Docker Compose. 231 tests. Aucun framework d'orchestration.",
+    "quote.text": "Un système dont on connaît les défauts est plus fiable qu'un système qui n'en déclare aucun.",
+    "quote.who": "extrait de la déclaration éthique du projet",
+    "footer.demo": "Démo en ligne bientôt. En attendant, tout le code, les tests et la documentation des limites sont sur GitHub.",
+    "footer.by": "Marguerite El Mbimbey — projet d'examen, poursuivi au-delà du cahier des charges."
+  }
+};
+
+const TITLES = {
+  it: "CruScout — Il cruscotto del piccolo produttore",
+  en: "CruScout — The small winemaker's dashboard",
+  fr: "CruScout — Le tableau de bord du petit vigneron"
+};
+
+function applica(lang) {
+  const d = T[lang] || T.it;
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const k = el.getAttribute("data-i18n");
+    if (d[k] !== undefined) el.innerHTML = d[k];
+  });
+  document.documentElement.lang = lang;
+  document.title = TITLES[lang];
+  document.querySelectorAll(".lang button").forEach(b =>
+    b.classList.toggle("active", b.dataset.lang === lang));
+  try { localStorage.setItem("cruscout-lang", lang); } catch (e) {}
+}
+
+document.querySelectorAll(".lang button").forEach(b =>
+  b.addEventListener("click", () => applica(b.dataset.lang)));
+
+// Lingua iniziale: quella scelta in precedenza, altrimenti quella del
+// browser se e' fra le tre, altrimenti italiano.
+let iniziale = "it";
+try { iniziale = localStorage.getItem("cruscout-lang") || iniziale; } catch (e) {}
+if (!localStorage.getItem("cruscout-lang")) {
+  const nav = (navigator.language || "").slice(0, 2);
+  if (T[nav]) iniziale = nav;
+}
+applica(iniziale);
+</script>
+</body>
+</html>
