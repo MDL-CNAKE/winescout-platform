@@ -5,7 +5,8 @@ lotto stima la qualità, ne valuta la conservazione, propone abbinamenti e
 risponde a domande attraverso un sommelier virtuale ancorato ai dati reali.
 
 Machine learning classico (scikit-learn) + AI generativa (RAG, function
-calling), backend FastAPI, frontend React, tutto in Docker.
+calling), backend FastAPI, interfaccia Streamlit (più un frontend React
+alternativo sullo stesso backend), tutto in Docker.
 
 ---
 
@@ -80,13 +81,13 @@ mestiere.
 ## Stack tecnico
 
 - Python 3.11+, FastAPI (API REST)
-- React + TypeScript, TanStack Router/Query, Recharts (interfaccia)
+- Streamlit (interfaccia principale, http://localhost:8501)
+- React + TypeScript, TanStack Router/Query, Recharts (interfaccia alternativa)
 - MySQL 8.4, migrazioni versionate con Flyway
 - scikit-learn (Pipeline, RandomForestRegressor)
 - RAG su knowledge base enologica (ricerca ibrida semantica + lessicale)
 - LLM via OpenRouter API (sommelier virtuale, con modalita demo se manca la chiave)
-- Docker / docker-compose (mysql + flyway + backend + frontend)
-- Streamlit mantenuto come demo di riserva (profilo `legacy`)
+- Docker / docker-compose (mysql + flyway + backend + streamlit + frontend)
 
 ## Dataset
 
@@ -104,7 +105,9 @@ Questo comando:
 2. esegue le migrazioni Flyway (schema + seed di 6497 vini)
 3. builda e avvia il backend FastAPI su http://localhost:8000 (documentazione
    interattiva su `/docs`)
-4. builda e avvia il frontend React su http://localhost:5174
+4. builda e avvia l'interfaccia **Streamlit su http://localhost:8501**
+5. builda e avvia il frontend React su http://localhost:5174 (interfaccia
+   alternativa sullo stesso backend)
 
 Per fermare tutto: `docker compose down` (i dati restano nel volume).
 Per ripartire da zero: `docker compose down -v` (cancella anche i dati).
@@ -129,7 +132,10 @@ e imposta `OPENROUTER_API_KEY`. Senza chiave l'app funziona comunque in modalita
     # backend (terminale 1)
     uvicorn backend.main:app --reload --port 8000
 
-    # frontend (terminale 2)
+    # interfaccia Streamlit (terminale 2)
+    streamlit run src/app.py
+
+    # oppure il frontend React (terminale 2)
     cd frontend && npm install && npm run dev
 
 ## Struttura del progetto
@@ -169,7 +175,13 @@ e imposta `OPENROUTER_API_KEY`. Senza chiave l'app funziona comunque in modalita
     |           `-- Sommelier.tsx     # SVEVA, sommelier virtuale
     |
     |-- src/
-    |   |-- app.py                    # Entry point Streamlit (demo di riserva, profilo legacy)
+    |   |-- app.py                    # Entry point Streamlit: marchio, operatore, navigazione per ruolo
+    |   |-- ui/                       # Interfaccia Streamlit, client del backend FastAPI
+    |   |   |-- api.py                # Client HTTP con cache: unico punto di contatto col backend
+    |   |   |-- navigazione.py        # Sezioni per ruolo (stesse regole del router React)
+    |   |   |-- formato.py            # Formattazione pura, testata senza avviare Streamlit
+    |   |   `-- pagine/               # Catalogo, scheda vino, SVEVA, predizione, il modello,
+    |   |                             #   conservazione, vendite, packaging, spedizioni, marketing
     |   |-- data_loader.py            # Scarica e unisce il Wine Quality Dataset (UCI)
     |   |-- generate_seed.py          # Converte il CSV in seed SQL versionato (V2)
     |   |-- wine_style.py             # Soglie di dolcezza (Reg. UE 2019/33), corpo, acidita' percepita
@@ -211,9 +223,11 @@ e imposta `OPENROUTER_API_KEY`. Senza chiave l'app funziona comunque in modalita
     |-- models/                       # Modello addestrato (generato da train.py, non versionato)
     |-- data/                         # CSV scaricato da data_loader.py (non versionato, riproducibile)
     |
-    |-- Dockerfile                    # Immagine dell'app Streamlit (demo di riserva)
-    |-- docker-compose.yml            # Orchestrazione mysql + flyway + backend + frontend
+    |-- Dockerfile                    # Immagine leggera dell'interfaccia Streamlit
+    |-- docker-compose.yml            # Orchestrazione mysql + flyway + backend + streamlit + frontend
     |-- requirements.txt
+    |-- requirements-streamlit.txt    # Dipendenze della sola interfaccia (niente torch/chromadb)
+    |-- .streamlit/config.toml        # Tema con i colori del marchio, statistiche d'uso disattivate
     |-- .env.example                  # Template variabili ambiente (DB, chiave LLM)
     `-- .gitignore
 
@@ -409,19 +423,31 @@ Il CSV in `data/` non e' versionato (e' riproducibile scaricandolo di nuovo).
 
 ## Architettura
 
-L'interfaccia e' stata migrata da Streamlit a un frontend React separato da un
-backend FastAPI, che espone come API REST la stessa logica Python gia' esistente
-(modello ML, recommender, RAG): nessuna logica di dominio e' stata riscritta, solo
-avvolta in un layer HTTP. La versione Streamlit resta disponibile come demo di
-riserva e non parte di default.
+Tutta la logica di dominio (modello ML, recommender, RAG, regole enologiche,
+SVEVA) vive nel backend FastAPI. Le interfacce sono due, e nessuna delle due
+contiene logica propria: chiedono tutto al backend.
 
-    Browser  ->  React (nginx, :5174)  ->  FastAPI (:8000)  ->  MySQL (:3306)
-                                                            ->  modello joblib
-                                                            ->  indice RAG
-                                                            ->  OpenRouter (LLM)
+    Browser  ->  Streamlit (:8501)       ->  FastAPI (:8000)  ->  MySQL (:3306)
+    Browser  ->  React (nginx, :5174)    ->                   ->  modello joblib
+                                                              ->  indice RAG
+                                                              ->  OpenRouter (LLM)
 
-Nota: `VITE_API_URL` viene "bruciato" nel bundle statico a build-time, quindi punta
-all'indirizzo raggiungibile dal **browser** dell'utente (non dal container).
+**Streamlit e' l'interfaccia principale.** Una prima versione importava
+direttamente i moduli di `src/`; nel frattempo la logica di SVEVA (filtro
+anti-gibberish, memoria, agente, verdetto validato) era cresciuta dentro il
+backend, e quella versione era rimasta indietro: prompt vecchio, `top_k` 3
+invece del 5 misurato, nessun R² onesto. Riportarla in pari importando di
+nuovo `src/` avrebbe creato una seconda copia di ogni regola. Ora Streamlit
+chiama gli stessi endpoint di React (`src/ui/api.py`): le due interfacce
+mostrano gli stessi numeri perche' li chiedono alla stessa fonte.
+
+Il prezzo della scelta e' dichiarato: Streamlit non funziona senza il backend
+attivo, e in quel caso lo dice con le istruzioni per avviarlo.
+
+Nota: `VITE_API_URL` viene "bruciato" nel bundle React a build-time, quindi punta
+all'indirizzo raggiungibile dal **browser** dell'utente. `BACKEND_URL` di
+Streamlit invece e' letto dal server Streamlit, quindi nel container punta a
+`http://backend:8000`.
 
 ### Avvio in sviluppo (senza Docker)
 
@@ -431,21 +457,32 @@ source venv/bin/activate
 pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
 uvicorn backend.main:app --reload --port 8000
 
-# Frontend (terminale 2)
+# Streamlit (terminale 2)
+streamlit run src/app.py
+
+# Frontend React, in alternativa (terminale 2)
 cd frontend
 npm install
 npm run dev
 ```
 
-Il frontend di sviluppo gira su `http://localhost:5173`, il backend su
-`http://localhost:8000` (documentazione interattiva su `/docs`).
+Streamlit gira su `http://localhost:8501`, il frontend React di sviluppo su
+`http://localhost:5173`, il backend su `http://localhost:8000` (documentazione
+interattiva su `/docs`).
 
 ### Avvio con Docker
 
 ```bash
-docker compose up -d --build                      # mysql + flyway + backend + frontend
-docker compose --profile legacy up -d streamlit   # versione Streamlit, opzionale
+docker compose up -d --build                      # mysql + flyway + backend + streamlit + frontend
+docker compose up -d --build streamlit            # solo Streamlit e cio' da cui dipende
 ```
+
+### Test dell'interfaccia
+
+`tests/test_streamlit_app.py` apre ogni pagina con `streamlit.testing` e un
+backend finto che restituisce risposte con la forma reale degli endpoint.
+Verifica che nessuna pagina sollevi eccezioni e che la memoria di SVEVA parta
+dal client: la seconda domanda porta con se' lo scambio precedente.
 
 ## Identità del progetto: come si è arrivati al nome
 
@@ -499,6 +536,24 @@ collasserebbe.
 Nota: il nome è scelto per un progetto accademico e non è stato verificato
 come marchio registrabile.
 
+### Il Caravaggio: perché è stato rimosso
+
+Il *Bacco adolescente* è stato a lungo lo sfondo del sito, e la scelta di
+toglierlo è documentata perché è una decisione di progetto, non un
+ripensamento estetico.
+
+È un dipinto **verticale**, mentre il contenuto dell'applicazione è una
+colonna centrale su una finestra orizzontale: i due si contendevano lo stesso
+spazio. Ogni tentativo di renderlo più visibile — sfondo pieno, fascia
+d'apertura, colonna laterale — costava leggibilità al testo o spingeva il
+catalogo sotto la piega; ogni tentativo di salvare la leggibilità lo rendeva
+invisibile. Con una home diventata catalogo denso, il conflitto non aveva
+soluzione: un quadro da museo e una tabella di dati chiedono attenzioni
+opposte.
+
+Resta però nell'identità: la **palette bordeaux, crema e oro** del sito è
+campionata dai suoi colori, e il progetto ha portato il nome Bacchus prima di
+diventare CruScout.
 
 ## Nessuna fotografia nel prodotto
 

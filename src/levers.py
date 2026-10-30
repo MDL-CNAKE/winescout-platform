@@ -17,8 +17,8 @@ PERCHE' "STIMATO" E NON "GARANTITO"
 ------------------------------------
 Tre limiti da tenere presenti, dichiarati anche nell'interfaccia:
 
-1. E' la lettura del modello, non una legge fisica. Il modello ha R2 0,56 sul
-   test set: coglie la tendenza, non e' un oracolo.
+1. E' la lettura del modello, non una legge fisica. Il modello ha R2 0,40 sul
+   test set senza righe ripetute: coglie la tendenza, non e' un oracolo.
 2. I parametri chimici sono correlati fra loro. Nella realta' di cantina non
    si abbassa l'acidita' volatile "tenendo fermo tutto il resto": ogni
    intervento ne muove altri. L'analisi a un fattore per volta ignora queste

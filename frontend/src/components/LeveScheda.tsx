@@ -74,7 +74,7 @@ export function LeveScheda({ wineId }: { wineId: number }) {
         ogni parametro viene mosso singolarmente tenendo fermi gli altri. In cantina non funziona
         così — le variabili chimiche sono legate fra loro, e correggerne una ne sposta altre —
         quindi il guadagno reale sarà tipicamente inferiore a quello indicato. Il modello ha
-        R² 0,56 sul test set: coglie la tendenza, non è un oracolo. I passi proposti sono
+        R² 0,40 sul test set senza righe ripetute: coglie la tendenza, non è un oracolo. I passi proposti sono
         correzioni realizzabili in una lavorazione reale, non spostamenti statistici astratti.
       </p>
     </>

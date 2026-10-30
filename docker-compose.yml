@@ -55,28 +55,18 @@ services:
     depends_on:
       - backend
 
-  # Versione Streamlit originale, mantenuta come demo di riserva durante la
-  # migrazione a React (facoltativa: "docker compose --profile legacy up").
-  # Non parte di default, cosi' non consuma risorse ne' entra in conflitto
-  # di porta con "backend" se non serve.
+  # Interfaccia Streamlit (http://localhost:8501): e' l'interfaccia
+  # dell'esame. Non tocca database, modello o chiave LLM: chiede tutto al
+  # backend, quindi le servono solo il suo indirizzo e che sia pronto.
   streamlit:
     build: .
-    profiles: ["legacy"]
     ports:
       - "8501:8501"
     environment:
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: winescout
-      DB_PASSWORD: winescout
-      DB_NAME: winescout
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      LLM_MODEL: ${LLM_MODEL:-meta-llama/llama-3.1-8b-instruct}
+      BACKEND_URL: http://backend:8000
     depends_on:
-      flyway:
-        condition: service_completed_successfully
-    volumes:
-      - ./models:/app/models
+      backend:
+        condition: service_healthy
 
 volumes:
   mysql_data:

@@ -1,0 +1,13 @@
+# Tema dell'interfaccia Streamlit: gli stessi colori del marchio CruScout
+# usati dal frontend React e dalla pagina di presentazione.
+[theme]
+primaryColor = "#6d1b2f"
+backgroundColor = "#faf7f2"
+secondaryBackgroundColor = "#f4ece2"
+textColor = "#2a2a2a"
+font = "sans serif"
+
+[browser]
+# Nessuna statistica d'uso inviata a Streamlit: coerente con la
+# dichiarazione etica (nessun tracciamento, nessun dato a terzi).
+gatherUsageStats = false

@@ -1,0 +1,10 @@
+# Dipendenze della sola interfaccia Streamlit.
+#
+# L'interfaccia non carica il modello ne' l'indice RAG: chiede tutto al
+# backend via HTTP (vedi src/ui/api.py). Per questo non servono torch,
+# chromadb ne' scikit-learn, e l'immagine Docker resta piccola.
+#
+# >= 1.50 per st.navigation, st.segmented_control e il parametro width.
+streamlit>=1.50.0
+requests>=2.31.0
+pandas>=2.0.0

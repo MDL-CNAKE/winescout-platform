@@ -339,9 +339,9 @@ cambia la previsione del modello.
 Tre limiti la accompagnano, dichiarati anche nell'interfaccia accanto ai
 risultati.
 
-**È la lettura del modello, non una legge fisica.** Il modello spiega poco
-più della metà della variabilità (R² 0,56 sul test set): indica una
-tendenza, non un esito garantito.
+**È la lettura del modello, non una legge fisica.** Il modello spiega circa
+il 40% della variabilità (R² 0,40 sul test set senza righe ripetute): indica
+una tendenza, non un esito garantito.
 
 **Le variabili chimiche sono correlate fra loro.** In cantina non si abbassa
 l'acidità volatile "tenendo fermo tutto il resto": ogni intervento ne muove

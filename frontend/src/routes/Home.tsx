@@ -118,8 +118,10 @@ export function Home() {
       )}
 
       {/* Credenziali del modello in chiusura: le due metriche restano
-          distinte, 0,52 e' la media in cross-validation e 0,56 il test set
-          indipendente. Confonderle sarebbe scorretto. */}
+          distinte, 0,39 e' la media in cross-validation raggruppata e 0,40
+          il test set senza righe ripetute. Fino alla scoperta del leakage
+          qui comparivano 0,52 e 0,56: erano gonfiati dai duplicati (vedi
+          docs/model_limitations.md). */}
       <ul className="trust-strip">
         <li>
           <span className="trust-value">6.497</span>
@@ -127,11 +129,11 @@ export function Home() {
         </li>
         <li>
           <span className="trust-value">5-fold</span>
-          <span className="trust-label">cross-validation · R² 0,52</span>
+          <span className="trust-label">cross-validation raggruppata · R² 0,39</span>
         </li>
         <li>
-          <span className="trust-value">R² 0,56</span>
-          <span className="trust-label">su test set indipendente</span>
+          <span className="trust-value">R² 0,40</span>
+          <span className="trust-label">su test set senza righe ripetute</span>
         </li>
       </ul>
       <p className="trust-source">
