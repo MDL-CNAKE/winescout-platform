@@ -49,7 +49,7 @@ non si tocca mai, è ciò che ha reso visibile la differenza.
 | **Function calling** | l'LLM non conosce il catalogo: chiama strumenti tipizzati e il codice esegue le query |
 | **Memoria conversazionale** | finestra scorrevole con doppio limite, e la query di recupero ricostruita per i seguiti |
 
-**231 test automatici.** Nessun framework di orchestrazione (LangChain e simili):
+**255 test automatici.** Nessun framework di orchestrazione (LangChain e simili):
 le componenti sono scritte a mano perché volevo poterle misurare separatamente —
 con un `EnsembleRetriever` non avrei potuto confrontare ricerca ibrida e
 semantica pura, e scoprire che la semantica pura era la peggiore delle tre.
@@ -142,8 +142,6 @@ e imposta `OPENROUTER_API_KEY`. Senza chiave l'app funziona comunque in modalita
 
     winescout-platform/
     |
-    winescout-platform/
-    |
     |-- backend/
     |   `-- main.py                   # API FastAPI: catalogo, ricerca, predizione, conservazione,
     |                                 #   leve, importanza, packaging, profili, operatori, sommelier
@@ -204,7 +202,7 @@ e imposta `OPENROUTER_API_KEY`. Senza chiave l'app funziona comunque in modalita
     |   `-- test_db_connection.py     # Verifica rapida della connessione al DB
     |
     |-- tests/                        # Suite pytest: pricing, naming, pairing, recommender,
-    |                                 #   conservation, levers, API
+    |                                 #   conservation, levers, API, interfaccia Streamlit
     |
     |-- db/migration/                 # Migrazioni Flyway, applicate in ordine automaticamente
     |   |-- V1__init_schema.sql       # Schema: wines, quality_predictions, recommendations
@@ -289,21 +287,34 @@ Analisi completa in [docs/model_limitations.md](docs/model_limitations.md).
 
 ## Interfaccia
 
-- **Catalogo** (pagina iniziale): griglia con filtri sui parametri chimici, sei
-  ordinamenti e paginazione, tutti eseguiti in SQL. Ogni card mostra la bottiglia
-  disegnata dai dati, il lotto, il profilo sintetico e il prezzo.
-- **Scheda vino** (`/vino/:id`): sidebar per saltare fra le referenze e cinque
-  schede contestuali sullo stesso vino — predizione (form precompilato col suo
-  profilo), leve di miglioramento, conservazione, raccomandazioni navigabili,
-  packaging e SVEVA gia' agganciata al vino.
+Le sezioni sono le stesse in Streamlit (http://localhost:8501) e in React
+(http://localhost:5174). Questa descrizione segue Streamlit, l'interfaccia
+principale.
+
+- **Catalogo** (pagina iniziale): filtri sui parametri chimici, sei ordinamenti
+  e paginazione, tutti eseguiti in SQL. Export CSV dell'intero risultato
+  filtrato, in formato Excel italiano o internazionale. Una riga selezionata
+  apre la scheda del vino.
+- **Scheda vino**: sette schede sullo stesso vino — predizione (valori
+  precompilati col suo profilo), leve di miglioramento, conservazione,
+  raccomandazioni e alternative più economiche, packaging, SVEVA (verdetto di
+  abbinamento validato e domanda libera) e selezione condivisa fra colleghi.
+- **SVEVA** (Sommelier Virtuale Esperta in Vini e Abbinamenti): due modalità.
+  *Conoscenza enologica*: chat con memoria e RAG sulla knowledge base, con le
+  fonti consultate e i tempi di risposta. *Dati del catalogo*: SVEVA chiama
+  strumenti tipizzati sul database, e l'interfaccia mostra quali e con quali
+  argomenti.
 - **Predizione**: la cantina inserisce **valori di laboratorio propri**, di un
-  mosto o di un lotto non ancora a catalogo, e ottiene la stima. Sotto, quali
-  variabili guidano davvero la previsione.
+  mosto o di un lotto non ancora a catalogo, e ottiene la stima.
+- **Il modello** (solo Streamlit): R² onesto, i tre scenari del leakage, il
+  confronto fra algoritmi, l'importanza delle variabili e la valutazione del
+  retrieval.
 - **Conservazione**: il magazzino ordinato per rischio, con i lotti da immettere
   sul mercato per primi in cima.
 - **Vendite**: profili di mercato e referenze corrispondenti, ordinate per margine.
-- **SVEVA** (Sommelier Virtuale Esperta in Vini e Abbinamenti): domande libere con
-  RAG sulla knowledge base enologica.
+- **Packaging**: stile, formato, tappo ed etichetta per ogni lotto.
+- **Spedizioni** e **Marketing**: sezioni dichiarate come non ancora disponibili.
+  Marketing indica per ogni analisi il dato che le servirebbe.
 
 ### Selezioni di lavoro e ruoli
 
@@ -312,9 +323,10 @@ usa si dichiara scegliendo il proprio nome da un elenco che la cantina configura
 Le preferenze sui vini vivono nel database e portano il nome di chi le ha messe,
 cosi' un collega vede cosa ha segnato l'altro.
 
-Il ruolo (titolare, enologo, vendite, logistica) determina quali sezioni compaiono
-in navigazione. Non e' un sistema di permessi — le altre restano raggiungibili via
-URL — ma un modo per mettere davanti a ciascuno gli strumenti del proprio mestiere.
+Il ruolo (titolare, enologo, vendite, logistica, marketing) determina quali
+sezioni compaiono in navigazione. Non e' un sistema di permessi — chiunque puo'
+cambiare operatore — ma un modo per mettere davanti a ciascuno gli strumenti del
+proprio mestiere.
 
 ### Guardrail di SVEVA
 
@@ -334,7 +346,8 @@ il vuoto generando comunque una scheda di degustazione.
 Fatto: Python 3.11+, OOP (WineRecommender, DatabaseConnection), gestione errori,
 GitHub con commit history, Pipeline scikit-learn, valutazione con CV documentata,
 persistenza modello con joblib, database MySQL persistente (non CSV),
-containerizzazione Docker completa, interfaccia React con API REST FastAPI,
+containerizzazione Docker completa, interfaccia Streamlit (più una React
+alternativa) su API REST FastAPI,
 integrazione LLM con prompt engineering, sistema RAG, test automatici (suite
 pytest), documentazione dei limiti del modello, spiegabilita' del modello
 (importanza per permutazione).
@@ -356,12 +369,14 @@ ibrida semantica piu' lessicale.
 
 **Privacy.** Nessun dato personale nel dataset, che contiene solo misure chimiche
 pubbliche. Nessun cookie, nessun analytics, nessun banner di consenso: non c'e'
-tracciamento da autorizzare. L'unica cosa salvata sul dispositivo e' quale
-operatore hai scelto. Le conversazioni con SVEVA vivono nel browser e non sono
-archiviate sul server. Le domande poste a SVEVA vengono pero' inviate a un
-modello esterno (OpenRouter) insieme ai dati del lotto selezionato: e' l'unica
-cosa che esce dalla vostra installazione, ed e' dichiarata. I font sono
-autoospitati e non da CDN.
+tracciamento da autorizzare; in Streamlit l'invio di statistiche d'uso e'
+disattivato (`.streamlit/config.toml`). Le conversazioni con SVEVA non sono
+archiviate: in Streamlit vivono nella memoria della sessione, in React nel
+browser, e in entrambi i casi si chiudono con la pagina. React salva sul
+dispositivo solo quale operatore hai scelto. Le domande poste a SVEVA vengono
+pero' inviate a un modello esterno (OpenRouter) insieme ai dati del lotto
+selezionato: e' l'unica cosa che esce dalla vostra installazione, ed e'
+dichiarata. Nessuna delle due interfacce carica font da una CDN.
 
 **Trasparenza.** L'interfaccia distingue sempre la natura di cio' che mostra: un
 dato misurato, una stima del modello, un valore simulato o un testo generato da un
@@ -557,8 +572,8 @@ diventare CruScout.
 
 ## Nessuna fotografia nel prodotto
 
-Le bottiglie mostrate nel catalogo non sono fotografie ma **disegni generati
-dai dati** (`BottleIcon`): il colore del vino deriva da tipo e gradazione, il
+Le bottiglie mostrate nel catalogo del frontend React non sono fotografie ma
+**disegni generati dai dati** (`BottleIcon`): il colore del vino deriva da tipo e gradazione, il
 livello nella bottiglia dallo zucchero residuo, la capsula dalla qualità. Le
 foto di repertorio, provate e poi scartate, mostravano la stessa immagine per
 centinaia di referenze diverse — decorazione, non informazione. Un disegno
@@ -571,5 +586,6 @@ progetto.
 
 ## Crediti
 
-- Caratteri tipografici: Inter e Righteous, autoospitati via `@fontsource`
+- Caratteri tipografici del frontend React: Inter e Righteous, autoospitati via `@fontsource`
+- Interfaccia principale: [Streamlit](https://streamlit.io)
 - Dataset: Wine Quality (Cortez et al., UCI Machine Learning Repository)
