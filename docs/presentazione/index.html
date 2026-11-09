@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CruScout — Presentazione</title>
+<!--
+  Presentazione da browser per l'esame "Strumenti AI e Machine Learning — Python".
+  File unico e autonomo: nessuna risorsa dalla rete, funziona anche offline.
+  Comandi: frecce / spazio / click per avanzare, N = note, F = schermo intero,
+  Home / Fine = prima / ultima slide.
+-->
+<style>
+  :root {
+    --bordeaux: #6d1b2f; --rosso: #a8394f; --oro: #c9a24b; --oro-chiaro: #e7d3a3;
+    --crema: #f4ece2; --inchiostro: #140810; --pannello: rgba(26, 11, 16, .62);
+    --muto: rgba(244, 236, 226, .6);
+    --display: "Righteous", "Trebuchet MS", "Segoe UI", sans-serif;
+    --testo: "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: var(--inchiostro); }
+  body {
+    font-family: var(--testo); color: var(--crema);
+    background: radial-gradient(ellipse at 50% 0%, #2e131c 0%, transparent 60%), var(--inchiostro);
+  }
+
+  /* Palco 16:9 a dimensione fissa, scalato per riempire lo schermo. */
+  #palco {
+    position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px;
+    transform-origin: center center;
+  }
+  .slide {
+    position: absolute; inset: 0; padding: 64px 80px 56px;
+    display: flex; flex-direction: column;
+    opacity: 0; transform: translateX(40px); pointer-events: none;
+    transition: opacity .45s ease, transform .45s ease;
+  }
+  .slide.attiva { opacity: 1; transform: none; pointer-events: auto; }
+  .slide.passata { transform: translateX(-40px); }
+
+  /* Elementi che entrano uno dopo l'altro. */
+  .slide .entra { opacity: 0; transform: translateY(14px); transition: opacity .5s ease, transform .5s ease; }
+  .slide.attiva .entra { opacity: 1; transform: none; }
+  .slide.attiva .entra.d1 { transition-delay: .15s; } .slide.attiva .entra.d2 { transition-delay: .3s; }
+  .slide.attiva .entra.d3 { transition-delay: .45s; } .slide.attiva .entra.d4 { transition-delay: .6s; }
+  .slide.attiva .entra.d5 { transition-delay: .75s; }
+
+  .occhiello { font-size: 13px; letter-spacing: .28em; text-transform: uppercase; color: var(--oro-chiaro); margin-bottom: 14px; }
+  h1 { font-family: var(--display); font-weight: 400; font-size: 54px; line-height: 1.08; color: var(--crema); }
+  h2 { font-family: var(--display); font-weight: 400; font-size: 40px; line-height: 1.12; color: var(--oro-chiaro); margin-bottom: 26px; }
+  h3 { font-size: 19px; font-weight: 600; color: var(--crema); margin-bottom: 8px; }
+  p, li { font-size: 19px; line-height: 1.55; color: rgba(244, 236, 226, .85); }
+  em { font-style: normal; color: var(--oro-chiaro); }
+  .piccolo { font-size: 14px; color: var(--muto); line-height: 1.5; }
+  .riga { display: flex; gap: 32px; }
+  .col { flex: 1; min-width: 0; }
+  .scheda {
+    background: var(--pannello); border: 1px solid rgba(231, 211, 163, .16);
+    border-radius: 14px; padding: 22px 24px;
+  }
+  .scheda.accento { border-color: rgba(231, 211, 163, .55); }
+  ul.punti { list-style: none; }
+  ul.punti li { position: relative; padding-left: 22px; margin-bottom: 10px; }
+  ul.punti li::before { content: ""; position: absolute; left: 0; top: 11px; width: 8px; height: 8px; border-radius: 50%; background: var(--oro); }
+  .numero { font-family: var(--display); font-size: 64px; line-height: 1; color: var(--oro-chiaro); }
+  .numero small { font-size: 26px; }
+  .nota-fondo { margin-top: auto; padding-top: 18px; border-top: 1px solid rgba(231, 211, 163, .2); }
+
+  /* Copertina. */
+  .copertina { justify-content: center; }
+  .marchio { display: flex; align-items: center; gap: 18px; margin-bottom: 24px; }
+  .marchio-parola { font-family: var(--display); font-size: 92px; line-height: 1; }
+  .marchio-parola i { font-style: normal; color: var(--oro-chiaro); }
+  .bottiglie { position: absolute; right: 70px; bottom: 70px; display: flex; align-items: flex-end; gap: 22px; }
+  .bottiglie svg { filter: drop-shadow(0 12px 24px rgba(0, 0, 0, .55)); }
+
+  /* Barre orizzontali disegnate con CSS. */
+  .barra { display: grid; grid-template-columns: 250px 1fr 70px; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .barra .etichetta { font-size: 16px; color: rgba(244, 236, 226, .85); }
+  .barra .traccia { height: 30px; background: rgba(255, 255, 255, .05); border-radius: 6px; overflow: hidden; }
+  .barra .riempi { height: 100%; width: 0; border-radius: 6px; background: var(--oro-chiaro); transition: width 1s cubic-bezier(.2, .8, .2, 1) .3s; }
+  .barra .riempi.rosso { background: var(--rosso); }
+  .barra .riempi.tenue { background: rgba(231, 211, 163, .35); }
+  .barra .valore { font-size: 18px; font-weight: 700; color: var(--crema); text-align: right; }
+
+  /* Schema dell'architettura. */
+  .schema { display: grid; grid-template-columns: 1fr 70px 1.2fr 70px 1.2fr; align-items: center; }
+  .nodo { background: var(--pannello); border: 1px solid rgba(231, 211, 163, .3); border-radius: 12px; padding: 16px 18px; text-align: center; }
+  .nodo b { display: block; font-size: 19px; color: var(--oro-chiaro); margin-bottom: 4px; }
+  .nodo span { font-size: 14px; color: var(--muto); }
+  .freccia { text-align: center; font-size: 28px; color: var(--oro); }
+  .pila { display: flex; flex-direction: column; gap: 10px; }
+
+  /* Demo. */
+  .pulsante {
+    display: inline-block; background: var(--oro-chiaro); color: #2b1208; text-decoration: none;
+    font-weight: 700; font-size: 22px; padding: 16px 34px; border-radius: 10px; margin: 6px 0 26px;
+  }
+  .pulsante:hover { background: #f2e0b6; }
+  ol.passi { counter-reset: p; list-style: none; }
+  ol.passi li { counter-increment: p; position: relative; padding-left: 46px; margin-bottom: 14px; }
+  ol.passi li::before {
+    content: counter(p); position: absolute; left: 0; top: 2px; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--bordeaux); color: var(--oro-chiaro); font-weight: 700; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .citazione { font-family: var(--display); font-size: 40px; line-height: 1.3; color: var(--crema); max-width: 980px; }
+  .citazione::before { content: "“"; color: var(--oro); }
+  .citazione::after { content: "”"; color: var(--oro); }
+
+  /* Interfaccia della presentazione. */
+  #progresso { position: fixed; left: 0; bottom: 0; height: 4px; background: var(--oro); transition: width .4s ease; z-index: 5; }
+  #contatore { position: fixed; right: 22px; bottom: 14px; font-size: 13px; color: var(--muto); z-index: 5; }
+  #aiuto { position: fixed; left: 22px; bottom: 14px; font-size: 12px; color: rgba(244, 236, 226, .35); z-index: 5; }
+  #note {
+    position: fixed; left: 0; right: 0; bottom: 4px; max-height: 34vh; overflow: auto; z-index: 6;
+    background: rgba(10, 4, 7, .95); border-top: 2px solid var(--oro); padding: 18px 28px;
+    font-size: 17px; line-height: 1.6; color: var(--crema); display: none;
+  }
+  #note.visibile { display: block; }
+  #note b { color: var(--oro-chiaro); }
+  aside.note { display: none; }
+</style>
+</head>
+<body>
+
+<div id="palco">
+
+  <!-- 1. Copertina -->
+  <section class="slide copertina">
+    <div class="marchio entra">
+<svg viewBox="50 12 100 86" width="96" height="83" aria-hidden="true">
+  <ellipse cx="100" cy="55" rx="46" ry="38" fill="#2a1015" stroke="#c9a24b" stroke-width="4"/>
+  <ellipse cx="108" cy="55" rx="20" ry="16" fill="#f3e6cf"/>
+  <circle cx="72" cy="45" r="4" fill="#c9a24b"/>
+  <circle cx="72" cy="58" r="4" fill="#e8d98a"/>
+  <circle cx="72" cy="71" r="4" fill="#6d1b2f"/>
+</svg>
+<span class="marchio-parola">Cru<i>Scout</i></span></div>
+    <h1 class="entra d1" style="font-size:40px;color:var(--oro-chiaro)">Il cruscotto del piccolo produttore</h1>
+    <p class="entra d2" style="margin-top:22px;max-width:640px">Machine learning e AI generativa per una piccola cantina: dalle analisi di laboratorio alla decisione.</p>
+    <p class="piccolo entra d3" style="margin-top:46px">Marguerite El Mbimbey</p>
+    <div class="bottiglie entra d2"><svg viewBox="0 0 60 180" width="57" height="170" role="img" aria-label="Bottiglia di vino bianco"><defs><linearGradient id="vino-101" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#b8ae8a"/><stop offset="30%" stop-color="#f7efd2"/><stop offset="62%" stop-color="#f2e5b6"/><stop offset="100%" stop-color="#b8ae8a"/></linearGradient><clipPath id="sagoma-101"><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z"/></clipPath></defs><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z" fill="url(#vino-101)"/><rect x="8" y="0" width="44" height="58.0" fill="#e9e6d4" clip-path="url(#sagoma-101)"/><rect x="10" y="112" width="40" height="46" fill="rgba(247,244,232,.88)" clip-path="url(#sagoma-101)"/><rect x="10" y="146" width="40" height="4" fill="rgba(0,0,0,.07)" clip-path="url(#sagoma-101)"/><path d="M23 6 L37 6 L37 32 L23 32 Z" fill="#6b5a4a" clip-path="url(#sagoma-101)"/><rect x="23" y="28" width="14" height="2.5" fill="rgba(0,0,0,.28)"/><rect x="15" y="66" width="3" height="42" rx="1.5" fill="rgba(255,255,255,.3)"/><rect x="27.5" y="16" width="2" height="34" rx="1" fill="rgba(255,255,255,.22)"/><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="1"/></svg><svg viewBox="0 0 60 180" width="63" height="190" role="img" aria-label="Bottiglia di vino rosso"><defs><linearGradient id="vino-102" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4b1723"/><stop offset="30%" stop-color="#9a5765"/><stop offset="62%" stop-color="#7d273a"/><stop offset="100%" stop-color="#4b1723"/></linearGradient><clipPath id="sagoma-102"><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z"/></clipPath></defs><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z" fill="url(#vino-102)"/><rect x="8" y="0" width="44" height="57.4" fill="#5b4038" clip-path="url(#sagoma-102)"/><rect x="10" y="112" width="40" height="46" fill="rgba(247,244,232,.88)" clip-path="url(#sagoma-102)"/><rect x="10" y="146" width="40" height="4" fill="rgba(0,0,0,.07)" clip-path="url(#sagoma-102)"/><path d="M23 6 L37 6 L37 32 L23 32 Z" fill="#c9a24b" clip-path="url(#sagoma-102)"/><rect x="23" y="28" width="14" height="2.5" fill="rgba(0,0,0,.28)"/><rect x="15" y="66" width="3" height="42" rx="1.5" fill="rgba(255,255,255,.3)"/><rect x="27.5" y="16" width="2" height="34" rx="1" fill="rgba(255,255,255,.22)"/><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="1"/></svg><svg viewBox="0 0 60 180" width="70" height="210" role="img" aria-label="Bottiglia di vino bianco"><defs><linearGradient id="vino-103" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#a38a51"/><stop offset="30%" stop-color="#e6d1a3"/><stop offset="62%" stop-color="#d7b56a"/><stop offset="100%" stop-color="#a38a51"/></linearGradient><clipPath id="sagoma-103"><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z"/></clipPath></defs><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z" fill="url(#vino-103)"/><rect x="8" y="0" width="44" height="34.0" fill="#e9e6d4" clip-path="url(#sagoma-103)"/><rect x="10" y="112" width="40" height="46" fill="rgba(247,244,232,.88)" clip-path="url(#sagoma-103)"/><rect x="10" y="146" width="40" height="4" fill="rgba(0,0,0,.07)" clip-path="url(#sagoma-103)"/><rect x="10" y="117" width="40" height="1.2" fill="rgba(169,132,56,.85)" clip-path="url(#sagoma-103)"/><rect x="10" y="152" width="40" height="1.2" fill="rgba(169,132,56,.85)" clip-path="url(#sagoma-103)"/><path d="M23 6 L37 6 L37 44 L23 44 Z" fill="#2a1017" clip-path="url(#sagoma-103)"/><rect x="23" y="40" width="14" height="2.5" fill="rgba(0,0,0,.28)"/><rect x="15" y="66" width="3" height="42" rx="1.5" fill="rgba(255,255,255,.3)"/><rect x="27.5" y="16" width="2" height="34" rx="1" fill="rgba(255,255,255,.22)"/><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="1"/></svg><svg viewBox="0 0 60 180" width="63" height="190" role="img" aria-label="Bottiglia di vino rosso"><defs><linearGradient id="vino-104" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#3b111a"/><stop offset="30%" stop-color="#854e5a"/><stop offset="62%" stop-color="#621c2c"/><stop offset="100%" stop-color="#3b111a"/></linearGradient><clipPath id="sagoma-104"><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z"/></clipPath></defs><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z" fill="url(#vino-104)"/><rect x="8" y="0" width="44" height="57.1" fill="#5b4038" clip-path="url(#sagoma-104)"/><rect x="10" y="112" width="40" height="46" fill="rgba(247,244,232,.88)" clip-path="url(#sagoma-104)"/><rect x="10" y="146" width="40" height="4" fill="rgba(0,0,0,.07)" clip-path="url(#sagoma-104)"/><path d="M23 6 L37 6 L37 32 L23 32 Z" fill="#c9a24b" clip-path="url(#sagoma-104)"/><rect x="23" y="28" width="14" height="2.5" fill="rgba(0,0,0,.28)"/><rect x="15" y="66" width="3" height="42" rx="1.5" fill="rgba(255,255,255,.3)"/><rect x="27.5" y="16" width="2" height="34" rx="1" fill="rgba(255,255,255,.22)"/><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="1"/></svg><svg viewBox="0 0 60 180" width="57" height="170" role="img" aria-label="Bottiglia di vino bianco"><defs><linearGradient id="vino-105" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#b6a980"/><stop offset="30%" stop-color="#f5ebca"/><stop offset="62%" stop-color="#efdfa9"/><stop offset="100%" stop-color="#b6a980"/></linearGradient><clipPath id="sagoma-105"><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z"/></clipPath></defs><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z" fill="url(#vino-105)"/><rect x="8" y="0" width="44" height="52.2" fill="#e9e6d4" clip-path="url(#sagoma-105)"/><rect x="10" y="112" width="40" height="46" fill="rgba(247,244,232,.88)" clip-path="url(#sagoma-105)"/><rect x="10" y="146" width="40" height="4" fill="rgba(0,0,0,.07)" clip-path="url(#sagoma-105)"/><path d="M23 6 L37 6 L37 32 L23 32 Z" fill="#c9a24b" clip-path="url(#sagoma-105)"/><rect x="23" y="28" width="14" height="2.5" fill="rgba(0,0,0,.28)"/><rect x="15" y="66" width="3" height="42" rx="1.5" fill="rgba(255,255,255,.3)"/><rect x="27.5" y="16" width="2" height="34" rx="1" fill="rgba(255,255,255,.22)"/><path d="M24 14 L24 56 C24 72 10 76 10 92 L10 168 Q10 176 18 176 L42 176 Q50 176 50 168 L50 92 C50 76 36 72 36 56 L36 14 Z" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="1"/></svg></div>
+    <aside class="note">Buongiorno. Presento CruScout: un cruscotto per piccole cantine. Parte dalle analisi chimiche di un lotto e aiuta a decidere. Le bottiglie che vedete non sono foto: sono disegnate dai dati, colore dal tipo e dalla gradazione, livello dallo zucchero, capsula dalla qualità.</aside>
+  </section>
+
+  <!-- 2. Il problema -->
+  <section class="slide">
+    <div class="occhiello"></div>
+    <h2>Tre domande di una piccola cantina</h2>
+    <div class="riga">
+      <div class="col scheda entra d1"><div class="numero">1</div><h3 style="margin-top:12px">Quanto vale questo lotto?</h3><p class="piccolo">Stima della qualità dalle analisi chimiche.</p></div>
+      <div class="col scheda entra d2"><div class="numero">2</div><h3 style="margin-top:12px">Quale faccio uscire prima?</h3><p class="piccolo">Indice di conservazione da regole enologiche.</p></div>
+      <div class="col scheda entra d3"><div class="numero">3</div><h3 style="margin-top:12px">Con cosa lo abbino?</h3><p class="piccolo">SVEVA, la sommelier virtuale con RAG e function calling.</p></div>
+    </div>
+    <div class="riga nota-fondo entra d4">
+      <div class="col"><p><em>Dataset:</em> UCI Wine Quality, 6.497 vini Vinho Verde, 11 misure chimiche e un punteggio 0–10.</p></div>
+      <div class="col"><p><em>Cosa non contiene:</em> vitigno, annata, terroir, prezzi. Il sistema lo dichiara invece di inventarlo.</p></div>
+    </div>
+    <aside class="note">Tre domande concrete. Il dataset è pubblico: 6.497 vini con undici misure chimiche. Il punto importante è cosa NON contiene: niente vitigno, niente annata, niente prezzi. Ogni volta che un dato manca, il sistema lo dice. Prezzi e margini sono simulati e dichiarati come tali.</aside>
+  </section>
+
+  <!-- 3. Architettura -->
+  <section class="slide">
+    <div class="occhiello">Architettura</div>
+    <h2>La logica sta in un posto solo</h2>
+    <div class="schema entra d1">
+      <div class="nodo" style="padding:28px 18px"><b>Streamlit</b><span>interfaccia · :8501</span></div>
+      <div class="freccia">→</div>
+      <div class="nodo" style="padding:28px 18px"><b>FastAPI</b><span>tutta la logica di dominio<br>REST · Pydantic · 285 test</span></div>
+      <div class="freccia">→</div>
+      <div class="pila">
+        <div class="nodo"><b>MySQL 8.4</b><span>catalogo · migrazioni Flyway</span></div>
+        <div class="nodo"><b>scikit-learn</b><span>RandomForest in Pipeline</span></div>
+        <div class="nodo"><b>ChromaDB</b><span>RAG ibrido</span></div>
+        <div class="nodo"><b>OpenRouter</b><span>LLM esterno</span></div>
+      </div>
+    </div>
+    <p class="nota-fondo entra d3">Streamlit non contiene logica: chiede tutto al backend. Due copie della stessa regola divergono appena una cambia — <em>è già successo in questo progetto</em>. Tutto gira in Docker Compose.</p>
+    <aside class="note">L'architettura ha una regola: la logica sta in un posto solo, il backend FastAPI. Streamlit è solo l'interfaccia: chiama le API e non contiene regole proprie. Il motivo è concreto: nel progetto una regola duplicata in due file era già divergente, ed è così che ho trovato uno degli errori. Nessun framework di orchestrazione: niente LangChain, perché volevo misurare ogni componente separatamente.</aside>
+  </section>
+
+  <!-- 4. Demo -->
+  <section class="slide">
+    <div class="occhiello">Demo dal vivo</div>
+    <h2>Vediamolo funzionare</h2>
+    <div class="riga">
+      <div class="col">
+        <a class="pulsante entra d1" href="http://localhost:8501" target="_blank">Apri CruScout →</a>
+        <ol class="passi entra d2">
+          <li><em>Catalogo:</em> griglia, filtri, export CSV per Excel.</li>
+          <li><em>Scheda vino:</em> predizione, leve di miglioramento, conservazione, radar.</li>
+          <li><em>SVEVA conoscenza:</em> una domanda, poi «e con il pesce?»</li>
+          <li><em>SVEVA catalogo:</em> «quali rossi sopra qualità 6 sotto i 15 euro?»</li>
+          <li><em>Vendite:</em> il cruscotto sui dati che esistono davvero.</li>
+        </ol>
+      </div>
+      <div class="col scheda entra d3" style="max-width:420px;align-self:flex-start;text-align:center">
+        <svg viewBox="0 0 200 220" width="150" height="165" aria-hidden="true"><ellipse cx="100" cy="55" rx="46" ry="38" fill="#2a1015" stroke="#c9a24b" stroke-width="4"/><ellipse cx="108" cy="55" rx="20" ry="16" fill="#f3e6cf"/><circle cx="72" cy="45" r="4" fill="#c9a24b"/><circle cx="72" cy="58" r="4" fill="#e8d98a"/><circle cx="72" cy="71" r="4" fill="#6d1b2f"/><path d="M60 95 L140 95 L150 200 Q150 212 138 212 L62 212 Q50 212 50 200 Z" fill="#4a1220"/><path d="M85 95 L100 130 L115 95 Z" fill="#f3e6cf"/><rect x="92" y="140" width="16" height="20" rx="2" fill="#c9a24b"/><rect x="132" y="105" width="14" height="55" rx="6" fill="#f3e6cf" transform="rotate(18 132 105)"/><rect x="150" y="150" width="45" height="8" rx="3" fill="#2a1015"/><rect x="163" y="118" width="10" height="30" rx="2" fill="#3f5c3f"/><rect x="166" y="112" width="4" height="8" fill="#3f5c3f"/><path d="M186 130 Q186 142 178 142 Q170 142 170 130 L170 124 L186 124 Z" fill="#e8d98a"/><rect x="177" y="142" width="2.5" height="10" fill="#ccc"/><rect x="88" y="205" width="24" height="12" rx="4" fill="#2a1015"/></svg>
+        <h3 style="margin-top:10px">SVEVA</h3>
+        <p class="piccolo">Sommelier Virtuale Esperta in Vini e Abbinamenti. Se il modello linguistico non risponde, usa le regole del sistema e lo dichiara.</p>
+      </div>
+    </div>
+    <aside class="note">Apro l'applicazione. Catalogo: le card con le bottiglie, i filtri, l'export. Apro un vino: predizione, leve, conservazione. Poi SVEVA: una domanda e un seguito, per mostrare la memoria. Poi la modalità catalogo: SVEVA chiama strumenti sul database e si vede quali. Se la rete non va, SVEVA risponde con le regole e lo scrive.</aside>
+  </section>
+
+  <!-- 5. Leakage -->
+  <section class="slide">
+    <div class="occhiello">Cosa ho trovato misurando · 1</div>
+    <h2>Il 29% dell'R² era memoria, non predizione</h2>
+    <div class="riga">
+      <div class="col" style="flex:1.5">
+        <p class="entra d1" style="margin-bottom:22px">Il dataset contiene <em>1.177 righe identiche su 6.497</em>. Con uno split casuale una copia va in addestramento e l'altra in test: il modello viene premiato per averla memorizzata.</p>
+        <div class="entra d2">
+          <div class="barra"><span class="etichetta">A. Split casuale (com'era)</span><div class="traccia"><div class="riempi rosso" data-w="56.1"></div></div><span class="valore">0,561</span></div>
+          <div class="barra"><span class="etichetta">C. Raggruppato (solo la fuga)</span><div class="traccia"><div class="riempi" data-w="39.8"></div></div><span class="valore">0,398</span></div>
+          <div class="barra"><span class="etichetta">B. Deduplicato (due cause)</span><div class="traccia"><div class="riempi tenue" data-w="37.3"></div></div><span class="valore">0,373</span></div>
+        </div>
+        <p class="piccolo entra d3" style="margin-top:8px">R² sul test set. Il confronto onesto è A contro C: stessi dati, l'unica differenza è la fuga.</p>
+      </div>
+      <div class="col scheda accento entra d4" style="align-self:flex-start">
+        <div class="numero">−29<small>%</small></div>
+        <p style="margin-top:10px">dell'R² dichiarato per gran parte dello sviluppo.</p>
+        <p class="piccolo" style="margin-top:14px">E la cross-validation non protegge: KFold con shuffle dà 0,521, GroupKFold sulla firma chimica 0,385.</p>
+      </div>
+    </div>
+    <aside class="note">Questa è la scoperta più importante. Il modello dichiarava R² 0,56. Ho trovato 1.177 righe duplicate. Per isolare la causa servono tre scenari: deduplicare cambia due cose insieme, i duplicati e la quantità di dati. Raggruppando le copie per firma chimica cambia solo la fuga: R² scende a 0,40. Il 29% era memoria. Anche la cross-validation era contaminata.</aside>
+  </section>
+
+  <!-- 6. Algoritmi -->
+  <section class="slide">
+    <div class="occhiello">Cosa ho trovato misurando · 2</div>
+    <h2>La fuga non è neutra fra gli algoritmi</h2>
+    <div class="riga">
+      <div class="col" style="flex:1.5">
+        <p class="entra d1" style="margin-bottom:22px">Guadagno da memorizzazione = R² contaminato − R² raggruppato.</p>
+        <div class="entra d2">
+          <div class="barra"><span class="etichetta">RandomForest (200 alberi)</span><div class="traccia"><div class="riempi rosso" data-w="95"></div></div><span class="valore">+0,136</span></div>
+          <div class="barra"><span class="etichetta">GradientBoosting</span><div class="traccia"><div class="riempi" data-w="18.2"></div></div><span class="valore">+0,026</span></div>
+          <div class="barra"><span class="etichetta">LinearRegression</span><div class="traccia"><div class="riempi" data-w="2.1"></div></div><span class="valore">+0,003</span></div>
+        </div>
+        <p class="entra d3" style="margin-top:14px">Una retta non può memorizzare una riga, 200 alberi sì.</p>
+      </div>
+      <div class="col scheda accento entra d4" style="align-self:flex-start">
+        <div class="numero">×47</div>
+        <p style="margin-top:10px">quanto la fuga premiava la RandomForest rispetto alla regressione lineare.</p>
+        <p class="piccolo" style="margin-top:14px">Vantaggio sul GradientBoosting: da 0,131 a <em>0,021</em>. La scelta regge, ma di poco: è quasi una decisione presa su una misura falsa.</p>
+      </div>
+    </div>
+    <aside class="note">Seconda conseguenza: la fuga non premia tutti allo stesso modo. La RandomForest guadagnava 47 volte più della regressione lineare, perché può memorizzare. Il suo vantaggio sul GradientBoosting passava da 0,13 a 0,02. Ho rifatto il confronto: la RandomForest resta la prima, ma lo dico con il margine reale.</aside>
+  </section>
+
+  <!-- 7. Cosa guida la qualità -->
+  <section class="slide">
+    <div class="occhiello">Il modello, spiegato</div>
+    <h2>Cosa guida la qualità</h2>
+    <div class="riga">
+      <div class="col" style="flex:1.5">
+        <div class="entra d1">
+          <div class="barra"><span class="etichetta">Grado alcolico</span><div class="traccia"><div class="riempi" data-w="77.4"></div></div><span class="valore">38,7%</span></div>
+          <div class="barra"><span class="etichetta">Acidità volatile</span><div class="traccia"><div class="riempi" data-w="38.6"></div></div><span class="valore">19,3%</span></div>
+          <div class="barra"><span class="etichetta">SO₂ libera</span><div class="traccia"><div class="riempi" data-w="21"></div></div><span class="valore">10,5%</span></div>
+          <div class="barra"><span class="etichetta">Solfati</span><div class="traccia"><div class="riempi" data-w="12.4"></div></div><span class="valore">6,2%</span></div>
+          <div class="barra"><span class="etichetta">Tipo (rosso/bianco)</span><div class="traccia"><div class="riempi tenue" data-w="0.6"></div></div><span class="valore">≈ 0</span></div>
+        </div>
+        <p class="piccolo entra d2" style="margin-top:6px">Importanza per permutazione sul test set raggruppato: quanto cala l'R² se una variabile viene mescolata.</p>
+      </div>
+      <div class="col entra d3">
+        <div class="scheda" style="margin-bottom:16px"><h3>R² 0,40: come leggerlo</h3><p class="piccolo">Il 77% dei vini sta in due sole classi (5 e 6). Con le sole variabili chimiche, spiegare il 40% della varianza è coerente con la letteratura su questo dataset.</p></div>
+        <div class="scheda"><h3>Correlazione, non causa</h3><p class="piccolo">Le leve di miglioramento muovono un parametro alla volta: in cantina le variabili sono legate, quindi la stima è ottimistica. L'interfaccia lo scrive accanto al numero.</p></div>
+      </div>
+    </div>
+    <aside class="note">Per spiegare il modello uso l'importanza per permutazione, non quella interna della forest, che sovrastima le variabili con molti valori. L'alcol pesa di più. Il tipo, rosso o bianco, non aggiunge nulla una volta nota la chimica. E R² 0,40 non è poco: il target è compresso in due classi.</aside>
+  </section>
+
+  <!-- 8. SVEVA e RAG -->
+  <section class="slide">
+    <div class="occhiello">Cosa ho trovato misurando · 3</div>
+    <h2>SVEVA: un RAG misurato, non solo costruito</h2>
+    <div class="riga">
+      <div class="col">
+        <h3 class="entra d1">Ricerca ibrida, misurata su 12 domande</h3>
+        <div class="entra d2" style="margin-top:12px">
+          <div class="barra" style="grid-template-columns:150px 1fr 60px"><span class="etichetta">Ibrida</span><div class="traccia"><div class="riempi" data-w="75"></div></div><span class="valore">75%</span></div>
+          <div class="barra" style="grid-template-columns:150px 1fr 60px"><span class="etichetta">Lessicale</span><div class="traccia"><div class="riempi tenue" data-w="58"></div></div><span class="valore">58%</span></div>
+          <div class="barra" style="grid-template-columns:150px 1fr 60px"><span class="etichetta">Semantica</span><div class="traccia"><div class="riempi rosso" data-w="42"></div></div><span class="valore">42%</span></div>
+        </div>
+        <p class="piccolo entra d3">Hit rate, top_k 3. La semantica pura fallisce su «ndole», piatto camerunense: un bias culturale misurato.</p>
+        <p class="entra d4" style="margin-top:18px">Su un insieme di verifica tenuto da parte: <em>91%</em> con top_k 5.</p>
+      </div>
+      <div class="col entra d3">
+        <div class="scheda accento" style="margin-bottom:14px"><h3>L'hit rate al 100% era un peggioramento</h3><p class="piccolo">Un documento nuovo occupava tutti i posti. Sulla ground truth originale, mai modificata, il punteggio era sceso dal 75% al 67%.</p></div>
+        <div class="scheda" style="margin-bottom:14px"><h3>Function calling</h3><p class="piccolo">Il modello non conosce il catalogo: chiama strumenti tipizzati e il codice esegue le query. Il modello propone, il codice dispone.</p></div>
+        <div class="scheda"><h3>Guardrail</h3><p class="piccolo">Filtro anti-gibberish, mai vitigni inventati, verdetti validati con Pydantic.</p></div>
+      </div>
+    </div>
+    <aside class="note">Il RAG non l'ho solo costruito, l'ho misurato. La ricerca semantica pura era la peggiore e falliva sui piatti non europei: per questo la ricerca è ibrida. Poi un errore istruttivo: aggiungendo un documento l'hit rate è salito al 100%, ma sulla ground truth originale era sceso. Tenere un criterio che non si tocca mai è ciò che l'ha reso visibile. Per i dati della cantina uso il function calling: il modello non scrive SQL, chiama funzioni che ho scritto io.</aside>
+  </section>
+
+  <!-- 9. Etica -->
+  <section class="slide">
+    <div class="occhiello">Etica e limiti</div>
+    <h2>Dove il dato manca, il sistema lo dichiara</h2>
+    <div class="riga">
+      <div class="col scheda entra d1"><h3>Cosa non sa</h3><ul class="punti"><li><p class="piccolo">Nessun vitigno, annata o terroir: non sono nei dati.</p></li><li><p class="piccolo">«Conservazione», non «invecchiamento»: mancano i tannini.</p></li><li><p class="piccolo">Prezzi e margini simulati, dichiarati in ogni pagina.</p></li></ul></div>
+      <div class="col scheda entra d2"><h3>Bias misurati</h3><ul class="punti"><li><p class="piccolo">Solo vini Vinho Verde: fuori dominio, nessuna stima.</p></li><li><p class="piccolo">Embedding deboli sui piatti extra-europei: corretto con la ricerca ibrida.</p></li><li><p class="piccolo">Ground truth generata dall'LLM sbagliata nel 13% dei casi: corretta a mano.</p></li></ul></div>
+      <div class="col scheda entra d3"><h3>Privacy e norme</h3><ul class="punti"><li><p class="piccolo">Nessun cookie, nessun tracciamento, conversazioni non salvate.</p></li><li><p class="piccolo">Le domande a SVEVA escono verso OpenRouter: è dichiarato.</p></li><li><p class="piccolo">EU AI Act: rischio minimo, supporto decisionale.</p></li></ul></div>
+    </div>
+    <aside class="note">Questione di etica: dove il dato manca, il sistema lo dice. I bias li ho misurati, non solo temuti. E l'unica cosa che esce dall'installazione sono le domande a SVEVA, e lo dichiariamo. Per l'AI Act è un sistema a rischio minimo: supporta la decisione, non la prende.</aside>
+  </section>
+
+  <!-- 10. Chiusura -->
+  <section class="slide copertina">
+    <p class="citazione entra">Un sistema di cui si conoscono i difetti è più affidabile di uno che non ne dichiara nessuno.</p>
+    <div class="riga entra d2" style="margin-top:46px;max-width:900px">
+      <div class="col"><div class="numero">29<small>%</small></div><p class="piccolo">di R² gonfiato, trovato e corretto</p></div>
+      <div class="col"><div class="numero">×47</div><p class="piccolo">premio della fuga alla RandomForest</p></div>
+      <div class="col"><div class="numero">285</div><p class="piccolo">test automatici</p></div>
+    </div>
+    <p class="entra d3" style="margin-top:46px">Lunga vita all'AI</p>
+    <p class="piccolo entra d4" style="margin-top:8px">github.com/MDL-CNAKE/winescout-platform</p>
+    <aside class="note">Chiudo con la frase della dichiarazione etica. Le scoperte sono arrivate da misure che potevano darmi torto. Grazie, sono pronta per le domande.</aside>
+  </section>
+
+</div>
+
+<div id="progresso"></div>
+<div id="contatore"></div>
+<div id="aiuto"></div>
+<div id="note"></div>
+
+<script>
+  const slide = Array.from(document.querySelectorAll(".slide"));
+  const palco = document.getElementById("palco");
+  const note = document.getElementById("note");
+  let attuale = 0;
+
+  function adatta() {
+    const s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    palco.style.transform = `translate(-50%, -50%) scale(${s})`;
+  }
+
+  function mostra(i) {
+    attuale = Math.max(0, Math.min(slide.length - 1, i));
+    slide.forEach((el, k) => {
+      el.classList.toggle("attiva", k === attuale);
+      el.classList.toggle("passata", k < attuale);
+      // Le barre si riempiono solo quando la slide e' visibile.
+      el.querySelectorAll(".riempi").forEach(b => { b.style.width = k === attuale ? b.dataset.w + "%" : "0"; });
+    });
+    document.getElementById("progresso").style.width = ((attuale + 1) / slide.length * 100) + "%";
+    document.getElementById("contatore").textContent = `${attuale + 1} / ${slide.length}`;
+    const testo = slide[attuale].querySelector("aside.note");
+    note.innerHTML = "<b>Note:</b> " + (testo ? testo.innerHTML : "");
+    history.replaceState(null, "", "#" + (attuale + 1));
+  }
+
+  document.addEventListener("keydown", e => {
+    if (["ArrowRight", "PageDown", " ", "Enter"].includes(e.key)) { e.preventDefault(); mostra(attuale + 1); }
+    else if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)) { e.preventDefault(); mostra(attuale - 1); }
+    else if (e.key === "Home") mostra(0);
+    else if (e.key === "End") mostra(slide.length - 1);
+    else if (e.key.toLowerCase() === "n") note.classList.toggle("visibile");
+    else if (e.key.toLowerCase() === "f") {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+      else document.exitFullscreen?.();
+    }
+  });
+  document.addEventListener("click", e => {
+    if (e.target.closest("a, #note")) return;
+    mostra(attuale + (e.clientX > window.innerWidth / 3 ? 1 : -1));
+  });
+  window.addEventListener("resize", adatta);
+
+  adatta();
+  mostra((parseInt(location.hash.slice(1)) || 1) - 1);
+</script>
+</body>
+</html>
