@@ -119,6 +119,42 @@ def test_rete_assente_risposta_dalle_regole(client, monkeypatch):
     assert "connessione" in r.json()["answer"]
 
 
+def test_contenuto_vuoto_risposta_dalle_regole(client, chiamate):
+    # I modelli che ragionano possono restituire content = null se spendono
+    # tutto il budget nel ragionamento.
+    vuota = {"choices": [{"message": {"content": None}}], "model": "finto"}
+    chiamate["risposte"] = [_risposta(200, vuota)]
+    r = client.post("/api/sommelier", json={"question": "cosa abbino a un risotto?"})
+    assert r.status_code == 200
+    assert r.json()["demo_mode"] is True
+
+
+def test_verdetto_con_contenuto_vuoto_ritenta(client, chiamate, monkeypatch):
+    class _Conn:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def cursor(self, dictionary=False):
+            class _C:
+                def execute(self, *a): pass
+                def fetchone(self):
+                    return {"name": "Rosso", "type": "red", "alcohol": 11.0, "ph": 3.4,
+                            "residual_sugar": 2.0, "fixed_acidity": 7.0, "volatile_acidity": 0.4,
+                            "sulphates": 0.6, "quality": 6, "food_pairing": "Tagliatelle al ragu"}
+                def close(self): pass
+            return _C()
+
+    monkeypatch.setattr(backend_main, "DatabaseConnection", lambda: _Conn())
+    vuota = {"choices": [{"message": {"content": None}}], "model": "finto"}
+    valida = {"choices": [{"message": {"content":
+              '{"giudizio": "buono", "motivazione": "Acidita giusta.", '
+              '"dato_citato": "11% vol", "profilo_alternativo": null}'}}], "model": "finto"}
+    chiamate["risposte"] = [_risposta(200, vuota), _risposta(200, valida)]
+    r = client.post("/api/verdetto", json={"wine_id": 1, "piatto": "tagliatelle al ragu"})
+    assert r.status_code == 200
+    assert r.json()["verdetto"]["giudizio"] == "buono"
+    assert r.json()["tentativi"] == 2
+
+
 def test_agente_sul_limite_risponde_503(client, chiamate):
     chiamate["risposte"] = [_risposta(429), _risposta(429)]
     r = client.post("/api/agente", json={"question": "quali rossi ho sotto i 15 euro?"})

@@ -1635,7 +1635,12 @@ def verdetto_abbinamento(payload: VerdettoRequest):
         try:
             inizio = time.perf_counter()
             r = chiama_modello(api_key, {
-                "max_tokens": 500,
+                # Margine ampio: i modelli che ragionano prima di rispondere
+                # (Gemma 4, Nemotron) spendono token nel ragionamento. Con
+                # 500 token finivano il budget prima del JSON e restituivano
+                # un contenuto vuoto.
+                "max_tokens": 2000,
+                "reasoning": {"effort": "low"},
                 # Temperatura bassa: qui non serve varieta' espressiva ma
                 # aderenza a uno schema.
                 "temperature": 0.2,
@@ -1649,7 +1654,10 @@ def verdetto_abbinamento(payload: VerdettoRequest):
             token_risposta += uso.get("completion_tokens") or 0
             modello_usato = body.get("model", model_name)
 
-            grezzo = body["choices"][0]["message"]["content"]
+            # Il contenuto puo' essere null (tutto il budget speso nel
+            # ragionamento): diventa testo vuoto, cioe' "nessun oggetto JSON",
+            # e segue la strada del nuovo tentativo invece di un errore.
+            grezzo = body["choices"][0]["message"].get("content") or ""
             verdetto = VerdettoAbbinamento.model_validate(_estrai_json(grezzo))
 
             return {
@@ -1776,7 +1784,9 @@ def agente(payload: AgenteRequest):
         try:
             inizio = time.perf_counter()
             r = chiama_modello(api_key, {
-                "max_tokens": 700,
+                # Margine per i modelli che ragionano prima di rispondere.
+                "max_tokens": 2000,
+                "reasoning": {"effort": "low"},
                 "temperature": 0.3,
                 "messages": messaggi,
                 "tools": STRUMENTI,
@@ -2085,7 +2095,12 @@ def ask_sommelier(payload: SommelierRequest):
         ms_generazione = int((time.perf_counter() - inizio_generazione) * 1000)
 
         body = response.json()
-        answer = body["choices"][0]["message"]["content"]
+        answer = (body["choices"][0]["message"].get("content") or "").strip()
+        if not answer:
+            # Contenuto vuoto: il modello ha speso tutto il budget nel
+            # ragionamento. Meglio la risposta dalle regole che un riquadro vuoto.
+            return dalle_regole("il modello linguistico non ha prodotto una risposta, "
+                                "riprova fra poco")
 
         # `usage` e' opzionale nella risposta: alcuni modelli non lo
         # restituiscono, quindi non si da' per scontato.

@@ -49,7 +49,7 @@ non si tocca mai, è ciò che ha reso visibile la differenza.
 | **Function calling** | l'LLM non conosce il catalogo: chiama strumenti tipizzati e il codice esegue le query |
 | **Memoria conversazionale** | finestra scorrevole con doppio limite, e la query di recupero ricostruita per i seguiti |
 
-**285 test automatici.** Nessun framework di orchestrazione (LangChain e simili):
+**287 test automatici.** Nessun framework di orchestrazione (LangChain e simili):
 le componenti sono scritte a mano perché volevo poterle misurare separatamente —
 con un `EnsembleRetriever` non avrei potuto confrontare ricerca ibrida e
 semantica pura, e scoprire che la semantica pura era la peggiore delle tre.
