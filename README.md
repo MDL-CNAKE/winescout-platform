@@ -49,7 +49,7 @@ non si tocca mai, è ciò che ha reso visibile la differenza.
 | **Function calling** | l'LLM non conosce il catalogo: chiama strumenti tipizzati e il codice esegue le query |
 | **Memoria conversazionale** | finestra scorrevole con doppio limite, e la query di recupero ricostruita per i seguiti |
 
-**275 test automatici.** Nessun framework di orchestrazione (LangChain e simili):
+**285 test automatici.** Nessun framework di orchestrazione (LangChain e simili):
 le componenti sono scritte a mano perché volevo poterle misurare separatamente —
 con un `EnsembleRetriever` non avrei potuto confrontare ricerca ibrida e
 semantica pura, e scoprire che la semantica pura era la peggiore delle tre.
@@ -114,6 +114,12 @@ Per ripartire da zero: `docker compose down -v` (cancella anche i dati).
 
 Per attivare il Sommelier Virtuale con un LLM reale, copia `.env.example` in `.env`
 e imposta `OPENROUTER_API_KEY`. Senza chiave l'app funziona comunque in modalita demo.
+
+Con i modelli gratuiti di OpenRouter (`:free`) conviene indicare piu' modelli in
+`LLM_MODELS`, separati da virgola: se il primo e' occupato (errore 429), OpenRouter
+prova i successivi. Se tutti restano occupati anche dopo un nuovo tentativo, SVEVA
+risponde con l'abbinamento calcolato dalle regole del sistema e lo dichiara,
+invece di mostrare un errore.
 
 ## Avvio in locale (sviluppo, senza Docker per l'app)
 

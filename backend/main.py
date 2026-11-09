@@ -1437,6 +1437,81 @@ class MetricheLLM(BaseModel):
 # non si e' ancorato.
 # --------------------------------------------------------------------------
 
+# --------------------------------------------------------------------------
+# Chiamata al modello: elenco di modelli e un nuovo tentativo sul limite
+#
+# I modelli gratuiti di OpenRouter rispondono spesso 429 ("Too Many
+# Requests"): per il limite del conto o perche' il fornitore e' sovraccarico.
+# Due difese, entrambe a costo zero:
+#
+# 1. ELENCO DI MODELLI. LLM_MODELS nel .env accetta piu' modelli separati da
+#    virgola. OpenRouter li prova in ordine (parametro `models`): se il primo
+#    e' occupato, risponde il secondo, senza una seconda richiesta da parte
+#    nostra. Senza LLM_MODELS vale LLM_MODEL, come prima.
+# 2. UN NUOVO TENTATIVO. Se tutto l'elenco risponde 429, si aspetta qualche
+#    secondo e si riprova una volta. Se il limite resta, si solleva
+#    LimiteModelli: ogni endpoint decide cosa mostrare invece di un errore.
+# --------------------------------------------------------------------------
+
+URL_OPENROUTER = "https://openrouter.ai/api/v1/chat/completions"
+MODELLO_PREDEFINITO = "meta-llama/llama-3.1-8b-instruct"
+PAUSA_DOPO_429 = 3  # secondi
+
+
+class LimiteModelli(Exception):
+    """Tutti i modelli dell'elenco hanno risposto 429, anche al secondo tentativo."""
+
+
+class ModelloNonRaggiungibile(LimiteModelli):
+    """OpenRouter non e' raggiungibile (rete assente, DNS, timeout).
+
+    Sottoclasse di LimiteModelli: per chi usa l'applicazione l'effetto e' lo
+    stesso - il modello oggi non risponde - quindi gli endpoint lo trattano
+    allo stesso modo, con un messaggio diverso.
+    """
+
+
+def modelli_configurati() -> list[str]:
+    """I modelli da usare, nell'ordine in cui OpenRouter deve provarli."""
+    elenco = os.getenv("LLM_MODELS", "").strip() or os.getenv("LLM_MODEL", MODELLO_PREDEFINITO)
+    return [m.strip() for m in elenco.split(",") if m.strip()] or [MODELLO_PREDEFINITO]
+
+
+def chiama_modello(api_key: str, corpo: dict, timeout: int = 60) -> requests.Response:
+    """POST a OpenRouter con l'elenco dei modelli e un nuovo tentativo su 429.
+
+    `corpo` contiene tutto tranne il modello (messaggi, max_tokens, tools...).
+    Gli errori diversi da 429 restano HTTPError, come prima.
+    """
+    modelli = modelli_configurati()
+    scelta = {"model": modelli[0]}
+    if len(modelli) > 1:
+        scelta["models"] = modelli
+
+    for tentativo in (1, 2):
+        try:
+            risposta = requests.post(
+                URL_OPENROUTER,
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={**scelta, **corpo},
+                timeout=timeout,
+            )
+        except (requests.ConnectionError, requests.Timeout) as e:
+            logger.warning("OpenRouter non raggiungibile: %s", e)
+            raise ModelloNonRaggiungibile(
+                "Il modello linguistico non è raggiungibile: controlla la connessione a internet."
+            ) from e
+        if risposta.status_code != 429:
+            risposta.raise_for_status()
+            return risposta
+        logger.warning("OpenRouter 429 (tentativo %s) su %s", tentativo, ", ".join(modelli))
+        if tentativo == 1:
+            time.sleep(PAUSA_DOPO_429)
+    raise LimiteModelli(
+        "I modelli linguistici sono occupati in questo momento. Riprova fra un minuto."
+    )
+
+
 GIUDIZI = ("ottimo", "buono", "accettabile", "sconsigliato")
 
 
@@ -1508,7 +1583,7 @@ def verdetto_abbinamento(payload: VerdettoRequest):
         raise HTTPException(status_code=400, detail="Descrivi il piatto in modo comprensibile")
 
     api_key = os.getenv("OPENROUTER_API_KEY", "")
-    model_name = os.getenv("LLM_MODEL", "meta-llama/llama-3.1-8b-instruct")
+    model_name = modelli_configurati()[0]
     if not api_key or api_key == "metti_qui_la_tua_chiave":
         raise HTTPException(
             status_code=503,
@@ -1559,20 +1634,13 @@ def verdetto_abbinamento(payload: VerdettoRequest):
     for tentativo in (1, 2):
         try:
             inizio = time.perf_counter()
-            r = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={
-                    "model": model_name,
-                    "max_tokens": 500,
-                    # Temperatura bassa: qui non serve varieta' espressiva ma
-                    # aderenza a uno schema.
-                    "temperature": 0.2,
-                    "messages": messaggi,
-                },
-                timeout=60,
-            )
-            r.raise_for_status()
+            r = chiama_modello(api_key, {
+                "max_tokens": 500,
+                # Temperatura bassa: qui non serve varieta' espressiva ma
+                # aderenza a uno schema.
+                "temperature": 0.2,
+                "messages": messaggi,
+            })
             ms_totali += int((time.perf_counter() - inizio) * 1000)
 
             body = r.json()
@@ -1611,6 +1679,9 @@ def verdetto_abbinamento(payload: VerdettoRequest):
                     ),
                 },
             ]
+        except LimiteModelli as e:
+            # 503 e non 502: non e' un guasto, e' un limite temporaneo.
+            raise HTTPException(status_code=503, detail=str(e)) from e
         except Exception as e:
             logger.exception("Errore nella chiamata al modello")
             raise HTTPException(status_code=502, detail=f"Errore nella chiamata: {e}") from e
@@ -1685,7 +1756,7 @@ def agente(payload: AgenteRequest):
         raise HTTPException(status_code=400, detail="Formula la domanda in modo comprensibile")
 
     api_key = os.getenv("OPENROUTER_API_KEY", "")
-    model_name = os.getenv("LLM_MODEL", "meta-llama/llama-3.1-8b-instruct")
+    model_name = modelli_configurati()[0]
     if not api_key or api_key == "metti_qui_la_tua_chiave":
         raise HTTPException(
             status_code=503,
@@ -1704,19 +1775,14 @@ def agente(payload: AgenteRequest):
     for _ in range(MAX_GIRI_AGENTE):
         try:
             inizio = time.perf_counter()
-            r = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={
-                    "model": model_name,
-                    "max_tokens": 700,
-                    "temperature": 0.3,
-                    "messages": messaggi,
-                    "tools": STRUMENTI,
-                },
-                timeout=60,
-            )
-            r.raise_for_status()
+            r = chiama_modello(api_key, {
+                "max_tokens": 700,
+                "temperature": 0.3,
+                "messages": messaggi,
+                "tools": STRUMENTI,
+            })
+        except LimiteModelli as e:
+            raise HTTPException(status_code=503, detail=str(e)) from e
         except Exception as e:
             logger.exception("Errore nella chiamata al modello")
             raise HTTPException(status_code=502, detail=f"Errore nella chiamata: {e}") from e
@@ -1918,7 +1984,7 @@ def ask_sommelier(payload: SommelierRequest):
         return {"answer": NONSENSE_REPLY, "demo_mode": False, "sources": []}
 
     api_key = os.getenv("OPENROUTER_API_KEY", "")
-    model_name = os.getenv("LLM_MODEL", "meta-llama/llama-3.1-8b-instruct")
+    model_name = modelli_configurati()[0]
 
     wine_context = ""
     wine_row = None
@@ -1970,19 +2036,20 @@ def ask_sommelier(payload: SommelierRequest):
             rag_context = "\n\n" + retriever.build_context(query_recupero)
         ms_recupero = int((time.perf_counter() - inizio_recupero) * 1000)
 
-    if not api_key or api_key == "metti_qui_la_tua_chiave":
+    def dalle_regole(motivo: str) -> dict:
+        """Risposta senza modello: l'abbinamento calcolato dalle regole del
+        sistema (src/pairing.py), con il motivo dichiarato nel testo."""
         if wine_row is not None:
             answer = (
                 f"Per {wine_row['name']} ({wine_row['type']}, {wine_row['alcohol']}% vol, "
                 f"qualità {int(wine_row['quality'])}/10) il nostro sistema suggerisce questo "
                 f"abbinamento: {wine_row['food_pairing']}. "
-                "(Risposta generata dalle regole del sistema. Configura OPENROUTER_API_KEY "
-                "nel file .env per una descrizione elaborata dall'LLM.)"
+                f"(Risposta generata dalle regole del sistema: {motivo}.)"
             )
         else:
             answer = (
-                "Seleziona un vino del catalogo per vedere un abbinamento reale, oppure "
-                "configura OPENROUTER_API_KEY nel file .env per risposte elaborate dall'IA."
+                "Seleziona un vino del catalogo per vedere un abbinamento calcolato dalle "
+                f"regole del sistema. ({motivo}.)"
             )
         return {
             "answer": answer,
@@ -1992,35 +2059,29 @@ def ask_sommelier(payload: SommelierRequest):
             "messaggi_ricordati": len(finestra),
         }
 
+    if not api_key or api_key == "metti_qui_la_tua_chiave":
+        return dalle_regole("configura OPENROUTER_API_KEY nel file .env per una risposta "
+                            "elaborata dal modello linguistico")
+
     try:
         inizio_generazione = time.perf_counter()
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": model_name,
-                "max_tokens": 1500,
-                "reasoning": {"effort": "low"},
-                # Lo storico sta FRA il prompt di sistema e la domanda
-                # corrente. I dati del vino e i passaggi RAG restano attaccati
-                # solo all'ultimo messaggio: ripeterli a ogni turno passato
-                # moltiplicherebbe i token senza aggiungere nulla, e il
-                # contesto recuperato ora e' quello pertinente adesso.
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    *(
-                        {"role": m.ruolo, "content": m.contenuto}
-                        for m in finestra
-                    ),
-                    {"role": "user", "content": payload.question + wine_context + rag_context},
-                ],
-            },
-            timeout=60,
-        )
-        response.raise_for_status()
+        response = chiama_modello(api_key, {
+            "max_tokens": 1500,
+            "reasoning": {"effort": "low"},
+            # Lo storico sta FRA il prompt di sistema e la domanda
+            # corrente. I dati del vino e i passaggi RAG restano attaccati
+            # solo all'ultimo messaggio: ripeterli a ogni turno passato
+            # moltiplicherebbe i token senza aggiungere nulla, e il
+            # contesto recuperato ora e' quello pertinente adesso.
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                *(
+                    {"role": m.ruolo, "content": m.contenuto}
+                    for m in finestra
+                ),
+                {"role": "user", "content": payload.question + wine_context + rag_context},
+            ],
+        })
         ms_generazione = int((time.perf_counter() - inizio_generazione) * 1000)
 
         body = response.json()
@@ -2051,6 +2112,14 @@ def ask_sommelier(payload: SommelierRequest):
             "metriche": metriche,
             "messaggi_ricordati": len(finestra),
         }
+    except ModelloNonRaggiungibile:
+        return dalle_regole("il modello linguistico non è raggiungibile, controlla la "
+                            "connessione a internet")
+    except LimiteModelli:
+        # Meglio una risposta dichiarata come "dalle regole" che un errore:
+        # l'abbinamento calcolato e' comunque un dato reale del sistema.
+        return dalle_regole("i modelli linguistici sono occupati in questo momento, "
+                            "riprova fra un minuto per una risposta elaborata")
     except Exception as e:
         logger.exception("Errore nella chiamata all'LLM")
         raise HTTPException(status_code=502, detail=f"Errore nella chiamata al Sommelier: {e}") from e

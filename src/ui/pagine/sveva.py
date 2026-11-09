@@ -38,7 +38,8 @@ def _intestazione() -> None:
 
 def _dettagli_risposta(d: dict) -> None:
     if d.get("demo_mode"):
-        st.caption(":orange[Modalità demo: chiave LLM non configurata, risposta generata dalle regole.]")
+        st.caption(":orange[Risposta generata dalle regole del sistema, senza il modello "
+                   "linguistico: il motivo è scritto nella risposta.]")
     if d.get("sources"):
         with st.expander(f"Fonti consultate ({len(d['sources'])} passaggi)"):
             for passaggio in d["sources"]:

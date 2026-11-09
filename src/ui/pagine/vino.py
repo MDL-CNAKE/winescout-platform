@@ -286,7 +286,8 @@ def _tab_sveva(v: dict) -> None:
                 stile.errore(e)
                 return
         if r["demo_mode"]:
-            st.warning("Modalità demo: chiave LLM non configurata, risposta generata dalle regole.")
+            st.warning("Risposta generata dalle regole del sistema, senza il modello "
+                       "linguistico: il motivo è scritto nella risposta.")
         st.markdown(r["answer"])
         stile.metriche(r.get("metriche"))
 

@@ -39,6 +39,14 @@ services:
       DB_NAME: winescout
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-meta-llama/llama-3.1-8b-instruct}
+      # Elenco facoltativo, separato da virgole: se il primo modello e'
+      # occupato, OpenRouter prova i successivi (vedi chiama_modello).
+      LLM_MODELS: ${LLM_MODELS:-}
+    # DNS pubblici espliciti: con WSL il DNS ereditato dal sistema a volte non
+    # risolve i nomi esterni, e il backend non trova openrouter.ai.
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     depends_on:
       flyway:
         condition: service_completed_successfully
