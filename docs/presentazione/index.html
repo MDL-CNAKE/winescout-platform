@@ -122,9 +122,31 @@
   #note.visibile { display: block; }
   #note b { color: var(--oro-chiaro); }
   aside.note { display: none; }
+
+  /* --- Effetti: sfondo di codice che scorre, occhielli battuti a macchina,
+         numeri che contano. Solo CSS e JavaScript locali, nessuna rete. --- */
+  #codice {
+    position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none;
+    display: flex; flex-direction: column; justify-content: space-around;
+    font-family: "Cascadia Mono", Consolas, "Courier New", monospace; font-size: 15px;
+    color: rgba(231, 211, 163, .085); white-space: nowrap;
+    mask-image: radial-gradient(ellipse at center, rgba(0,0,0,.35) 0%, #000 75%);
+    -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,.35) 0%, #000 75%);
+  }
+  #codice .fila { display: flex; width: max-content; animation: scorri 90s linear infinite; }
+  #codice .fila:nth-child(even) { animation-direction: reverse; animation-duration: 120s; }
+  #codice .fila span { padding-right: 3.2em; }
+  @keyframes scorri { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  #palco { z-index: 1; }
+  .occhiello { font-family: "Cascadia Mono", Consolas, "Courier New", monospace; letter-spacing: .18em; }
+  .occhiello.batte::after { content: "▍"; margin-left: 4px; color: var(--oro); animation: lampeggia 1s steps(1) infinite; }
+  @keyframes lampeggia { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { #codice .fila { animation: none; } }
 </style>
 </head>
 <body>
+
+<div id="codice" aria-hidden="true"></div>
 
 <div id="palco">
 
@@ -221,7 +243,7 @@
         <p class="piccolo entra d3" style="margin-top:8px">R² sul test set. Il confronto onesto è A contro C: stessi dati, l'unica differenza è la fuga.</p>
       </div>
       <div class="col scheda accento entra d4" style="align-self:flex-start">
-        <div class="numero">−29<small>%</small></div>
+        <div class="numero">−<span class="conta" data-fino="29">29</span><small>%</small></div>
         <p style="margin-top:10px">dell'R² dichiarato per gran parte dello sviluppo.</p>
         <p class="piccolo" style="margin-top:14px">E la cross-validation non protegge: KFold con shuffle dà 0,521, GroupKFold sulla firma chimica 0,385.</p>
       </div>
@@ -244,7 +266,7 @@
         <p class="entra d3" style="margin-top:14px">Una retta non può memorizzare una riga, 200 alberi sì.</p>
       </div>
       <div class="col scheda accento entra d4" style="align-self:flex-start">
-        <div class="numero">×47</div>
+        <div class="numero">×<span class="conta" data-fino="47">47</span></div>
         <p style="margin-top:10px">quanto la fuga premiava la RandomForest rispetto alla regressione lineare.</p>
         <p class="piccolo" style="margin-top:14px">Vantaggio sul GradientBoosting: da 0,131 a <em>0,021</em>. La scelta regge, ma di poco: è quasi una decisione presa su una misura falsa.</p>
       </div>
@@ -315,9 +337,9 @@
   <section class="slide copertina">
     <p class="citazione entra">Un sistema di cui si conoscono i difetti è più affidabile di uno che non ne dichiara nessuno.</p>
     <div class="riga entra d2" style="margin-top:46px;max-width:900px">
-      <div class="col"><div class="numero">29<small>%</small></div><p class="piccolo">di R² gonfiato, trovato e corretto</p></div>
-      <div class="col"><div class="numero">×47</div><p class="piccolo">premio della fuga alla RandomForest</p></div>
-      <div class="col"><div class="numero">287</div><p class="piccolo">test automatici</p></div>
+      <div class="col"><div class="numero"><span class="conta" data-fino="29">29</span><small>%</small></div><p class="piccolo">di R² gonfiato, trovato e corretto</p></div>
+      <div class="col"><div class="numero">×<span class="conta" data-fino="47">47</span></div><p class="piccolo">premio della fuga alla RandomForest</p></div>
+      <div class="col"><div class="numero"><span class="conta" data-fino="287">287</span></div><p class="piccolo">test automatici</p></div>
     </div>
     <p class="entra d3" style="margin-top:46px">Lunga vita all'AI</p>
     <p class="piccolo entra d4" style="margin-top:8px">github.com/MDL-CNAKE/winescout-platform</p>
@@ -355,6 +377,56 @@
     const testo = slide[attuale].querySelector("aside.note");
     note.innerHTML = "<b>Note:</b> " + (testo ? testo.innerHTML : "");
     history.replaceState(null, "", "#" + (attuale + 1));
+    effetti(slide[attuale]);
+  }
+
+  // --- Effetti ---------------------------------------------------------------
+
+  // Sfondo: parole del progetto che scorrono, come codice in esecuzione.
+  const PAROLE = ["GroupKFold(n_splits=5)", "R²=0.398", "SELECT * FROM wines", "RandomForestRegressor(200)",
+    "RRF k=5", "ChromaDB", "top_k=5", "hit@5 = 91%", "SO₂mol = SO₂/(1+10^(pH−1.81))", "1.177 duplicati",
+    "cosine_similarity", "def fit(", "POST /api/sommelier", "MRR 0.653", "json.loads", "tools=[cerca_vini]",
+    "Pydantic", "6.497 vini", "GroupShuffleSplit", "embedding", "FastAPI", "permutation_importance",
+    "R²=0.561 → 0.398", "Flyway V9", "streamlit run", "LIMIT 20", "pH 3.40", "x47"];
+  (function sfondo() {
+    const box = document.getElementById("codice");
+    for (let r = 0; r < 12; r++) {
+      const giro = PAROLE.slice(r * 5 % PAROLE.length).concat(PAROLE.slice(0, r * 5 % PAROLE.length));
+      const testo = giro.map(p => `<span>${p}</span>`).join("");
+      // Contenuto ripetuto due volte: lo scorrimento del 50% ricomincia senza salti.
+      box.insertAdjacentHTML("beforeend", `<div class="fila" style="animation-delay:-${r * 7}s">${testo}${testo}</div>`);
+    }
+  })();
+
+  const timer = [];
+  function effetti(el) {
+    timer.splice(0).forEach(clearInterval);
+
+    // Occhiello battuto a macchina.
+    const occ = el.querySelector(".occhiello");
+    if (occ && occ.textContent.trim()) {
+      const pieno = occ.dataset.testo || (occ.dataset.testo = occ.textContent);
+      let n = 0;
+      occ.textContent = "";
+      occ.classList.add("batte");
+      timer.push(setInterval(() => {
+        occ.textContent = pieno.slice(0, ++n);
+        if (n >= pieno.length) timer.forEach(clearInterval);
+      }, 38));
+    }
+
+    // Numeri che contano da 0 al valore, dopo l'ingresso della scheda.
+    el.querySelectorAll(".conta").forEach(s => {
+      const fino = parseInt(s.dataset.fino, 10);
+      s.textContent = "0";
+      const inizio = performance.now() + 450, durata = 1200;
+      const passo = t => {
+        const k = Math.min(1, Math.max(0, (t - inizio) / durata));
+        s.textContent = Math.round(fino * (1 - Math.pow(1 - k, 3)));
+        if (k < 1) requestAnimationFrame(passo);
+      };
+      requestAnimationFrame(passo);
+    });
   }
 
   document.addEventListener("keydown", e => {
