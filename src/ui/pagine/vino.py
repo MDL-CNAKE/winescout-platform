@@ -4,11 +4,14 @@ Tutte le schede lavorano sullo STESSO vino, senza doverlo riselezionare:
 predizione, leve, conservazione, raccomandazioni, packaging, SVEVA e
 selezione condivisa.
 """
+import html
+
 import pandas as pd
 import streamlit as st
 
 from src.ui import api, routing, stile
 from src.ui.api import ApiError
+from src.ui.disegni import bottiglia, radar
 from src.ui.formato import abbinamenti, euro, livello_conservazione, lotto_vino, tipo_esteso, titolo_vino
 
 GIUDIZIO_STILE = {
@@ -38,19 +41,23 @@ def _scegli_vino() -> int | None:
 
 
 def _intestazione(v: dict) -> None:
-    st.title(titolo_vino(v["name"]))
+    """Bottiglia disegnata dai dati accanto ai valori, come in React."""
     lotto = lotto_vino(v["name"])
-    if lotto:
-        st.caption(f"Lotto {lotto}")
-    c = st.columns(5)
-    c[0].metric("Tipo", tipo_esteso(v["type"]))
-    c[1].metric("Alcol", f"{v['alcohol']:.1f}% vol")
-    c[2].metric("pH", f"{v['ph']:.2f}")
-    c[3].metric("Qualità", f"{v['quality']}/10")
-    c[4].metric("Prezzo", euro(v["price_eur"]))
     piatti = abbinamenti(v["food_pairing"])
+    elenco = ""
     if piatti:
-        st.markdown("**Abbinamenti consigliati:** " + " · ".join(piatti))
+        elenco = ('<p class="vino-piatti-titolo">Abbinamenti consigliati</p><ul class="vino-piatti">'
+                  + "".join(f"<li>{html.escape(p)}</li>" for p in piatti) + "</ul>")
+    figura = bottiglia(v["id"], v["type"], v["quality"], v["alcohol"], v["residual_sugar"], altezza=230)
+    stile.html(
+        f'<div class="vino-hero"><div class="vino-figura">{figura}</div><div class="vino-meta">'
+        f'<h2>{html.escape(titolo_vino(v["name"]))}</h2>'
+        + (f'<span class="vino-lotto">Lotto {lotto}</span>' if lotto else "")
+        + f'<div class="vino-dati"><span>{tipo_esteso(v["type"])}</span>'
+        f'<span>{v["alcohol"]:.1f}% vol</span><span>pH {v["ph"]:.2f}</span>'
+        f'<span>Qualità {v["quality"]}/10</span><span>{euro(v["price_eur"])}</span></div>'
+        f'{elenco}</div></div>'
+    )
 
 
 def _tab_predizione(v: dict) -> None:
@@ -97,6 +104,14 @@ def _tab_predizione(v: dict) -> None:
             f"Qualità reale in catalogo: {v['quality']}/10. Lo scarto dipende da fattori non "
             "chimici (annata, terroir, affinamento) che il modello non osserva."
         )
+
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        stile.html(radar(v))
+    c2.caption(
+        "Profilo chimico normalizzato sui range tipici del dataset (0-100%), non valori "
+        "assoluti: serve a confrontare la forma di vini diversi."
+    )
     stile.nota(stile.NOTA_PREDIZIONE)
 
 

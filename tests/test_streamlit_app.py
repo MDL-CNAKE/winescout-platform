@@ -52,6 +52,10 @@ def _backend_finto(metodo: str, url: str, params=None, json=None, timeout=None):
                                        "quality": [3, 9]},
         ("GET", "/api/wines/search"): {"items": VINI, "total": 2, "page": 1, "page_size": 50},
         ("GET", "/api/wines/1"): VINI[0],
+        ("GET", "/api/wines"): VINI,
+        ("GET", "/api/conservazione/riepilogo"): [
+            {"type": "red", "giudizio": "Da immettere sul mercato", "lotti": 1},
+            {"type": "white", "giudizio": "Adatto alla conservazione", "lotti": 1}],
         ("GET", "/api/recommend/1"): [{**{k: VINI[1][k] for k in ("id", "name", "type", "alcohol", "ph",
                                                                  "quality", "price_eur")},
                                        "similarity": 0.93}],
@@ -88,6 +92,7 @@ def _backend_finto(metodo: str, url: str, params=None, json=None, timeout=None):
                                           "alcohol": 12.8, "residual_sugar": 2.0, "fixed_acidity": 6.8,
                                           "price_eur": 21.0, "margin_pct": 44.0, "margine_euro": 9.24}],
         ("POST", "/api/predict"): {"quality": 5.4},
+        ("POST", "/api/favorites"): None,
         ("POST", "/api/sommelier"): {
             "answer": "Con la carbonara serve acidità che sgrassi.", "demo_mode": False,
             "sources": ["Grassezza e untuosita del cibo\n\nL'acidità contrasta la grassezza."],
@@ -104,10 +109,11 @@ def _backend_finto(metodo: str, url: str, params=None, json=None, timeout=None):
                          "dato_citato": "9,4% vol", "profilo_alternativo": "più corpo"},
             "tentativi": 1, "metriche": {"ms_generazione": 700}},
     }
-    corpo = tabella.get((metodo, percorso))
-    if corpo is None:
+    if (metodo, percorso) not in tabella:
         return _risposta(404, {"detail": f"Percorso non previsto dal test: {metodo} {percorso}"})
-    return _risposta(200, corpo)
+    corpo = tabella[(metodo, percorso)]
+    # None = endpoint che risponde 204 senza corpo, come le scritture del backend.
+    return _risposta(204, b"") if corpo is None else _risposta(200, corpo)
 
 
 @pytest.fixture(autouse=True)
@@ -158,6 +164,21 @@ def test_ogni_pagina_si_apre_senza_eccezioni(backend, chiave):
     at = _apri(chiave)
     assert not at.exception, at.exception
     assert not at.error, [e.value for e in at.error]
+
+
+def test_griglia_mostra_card_con_bottiglia(backend):
+    at = _apri("catalogo")
+    scopri = [b for b in at.button if b.label == "Scopri"]
+    assert len(scopri) == 2  # una card per vino
+    assert any("<svg" in m.value and "card-titolo" in m.value for m in at.markdown)
+
+
+def test_segna_un_vino_dalla_griglia(backend):
+    at = _apri("catalogo")
+    cuore = next(b for b in at.button if b.key == "segna_2")
+    cuore.click().run()
+    assert not at.exception
+    assert ("POST", "/api/favorites", {"wine_id": 2, "operator_id": 1}) in backend
 
 
 def test_predizione_invia_tutti_i_parametri(backend):

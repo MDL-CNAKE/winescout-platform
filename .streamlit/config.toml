@@ -1,11 +1,57 @@
-# Tema dell'interfaccia Streamlit: gli stessi colori del marchio CruScout
-# usati dal frontend React e dalla pagina di presentazione.
+# Tema dell'interfaccia Streamlit: lo stesso del frontend React
+# (frontend/src/index.css) — fondo scuro caldo, testo crema, accenti oro.
+# Le regole che il tema non copre sono in src/ui/stile.py.
 [theme]
-primaryColor = "#6d1b2f"
-backgroundColor = "#faf7f2"
-secondaryBackgroundColor = "#f4ece2"
-textColor = "#2a2a2a"
-font = "sans serif"
+base = "dark"
+primaryColor = "#e7d3a3"
+backgroundColor = "#140810"
+secondaryBackgroundColor = "#2a1219"
+textColor = "#f4ece2"
+linkColor = "#e7d3a3"
+borderColor = "#4a2a33"
+dataframeBorderColor = "#3d1f27"
+dataframeHeaderBackgroundColor = "#2a1219"
+dataframeHeaderTextColor = "#e7d3a3"
+baseRadius = "0.6rem"
+buttonRadius = "0.5rem"
+showWidgetBorder = true
+greenColor = "#7fbf8a"
+redColor = "#d4667a"
+orangeColor = "#e7d3a3"
+chartCategoricalColors = ["#e7d3a3", "#a8394f", "#c9a24b", "#7fbf8a", "#f4ece2"]
+
+# Inter per l'interfaccia e Righteous per marchio e titoli, come in React.
+# I file stanno in src/static/fonts e sono serviti dall'app stessa: il
+# browser non contatta nessuna CDN (vedi la dichiarazione etica). Se i file
+# mancano, il browser usa il carattere di sistema successivo.
+font = "Inter, sans-serif"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/inter-latin-400-normal.woff2"
+weight = "400"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/inter-latin-600-normal.woff2"
+weight = "600"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/inter-latin-700-normal.woff2"
+weight = "700"
+
+[[theme.fontFaces]]
+family = "Righteous"
+url = "app/static/fonts/righteous-latin-400-normal.woff2"
+weight = "400"
+
+[theme.sidebar]
+backgroundColor = "#1a0b10"
+secondaryBackgroundColor = "#2a1219"
+
+[server]
+enableStaticServing = true
 
 [browser]
 # Nessuna statistica d'uso inviata a Streamlit: coerente con la

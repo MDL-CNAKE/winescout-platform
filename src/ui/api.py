@@ -106,6 +106,22 @@ def cerca_vini(filtri: dict, ordine: str, pagina: int, per_pagina: int) -> dict:
 
 
 @st.cache_data(ttl=600, show_spinner=False)
+def catalogo_completo() -> list[dict]:
+    """Tutti i 6.497 lotti, per il cruscotto vendite.
+
+    Circa 2 MB di JSON, compressi dal backend a circa un decimo: si
+    scaricano una volta e restano in cache, invece di fare una query per ogni
+    grafico.
+    """
+    return richiesta("GET", "/api/wines", timeout=60)
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def conservazione_riepilogo() -> list[dict]:
+    return richiesta("GET", "/api/conservazione/riepilogo", timeout=60)
+
+
+@st.cache_data(ttl=600, show_spinner=False)
 def vino(wine_id: int) -> dict:
     return richiesta("GET", f"/api/wines/{wine_id}")
 

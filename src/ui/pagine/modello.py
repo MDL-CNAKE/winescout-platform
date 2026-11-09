@@ -11,6 +11,7 @@ import streamlit as st
 
 from src.ui import api, stile
 from src.ui.api import ApiError
+from src.ui.grafici import barre as _barre
 
 
 def _metriche_oneste() -> None:
@@ -33,14 +34,20 @@ def _leakage() -> None:
         "copia va in addestramento e l'altra in test: il modello viene premiato per averla "
         "memorizzata. Per isolare la causa servono tre scenari, non due."
     )
-    st.dataframe(pd.DataFrame([
+    scenari = pd.DataFrame([
         {"Scenario": "A. Split casuale (com'era)", "Cosa cambia": "—",
          "RMSE": 0.569, "MAE": 0.403, "R²": 0.561},
         {"Scenario": "C. Raggruppato per firma chimica", "Cosa cambia": "solo la fuga",
          "RMSE": 0.679, "MAE": 0.528, "R²": 0.398},
         {"Scenario": "B. Deduplicato", "Cosa cambia": "fuga e dimensione del dataset",
          "RMSE": 0.675, "MAE": 0.515, "R²": 0.373},
-    ]), hide_index=True, width="stretch")
+    ])
+    c1, c2 = st.columns([2, 3])
+    with c1:
+        st.altair_chart(_barre(scenari.assign(Scenario=["A. casuale", "C. raggruppato", "B. deduplicato"]),
+                               "Scenario", "R²"), width="stretch")
+    with c2:
+        st.dataframe(scenari, hide_index=True, width="stretch")
     st.markdown(
         "Il confronto onesto è **A contro C**: stessi dati, l'unica differenza è la fuga. "
         "B cambia due cose insieme e da solo non direbbe quale ha prodotto il calo."
@@ -56,11 +63,16 @@ def _leakage() -> None:
         st.caption("Mescolare i fold sparge le copie esattamente come lo split. Serve raggruppare.")
     with c2:
         st.markdown("**La fuga non è neutra fra gli algoritmi**")
-        st.dataframe(pd.DataFrame([
+        algoritmi = pd.DataFrame([
             {"Modello": "RandomForest", "R² contaminato": 0.521, "R² raggruppato": 0.385, "Guadagno": 0.136},
             {"Modello": "GradientBoosting", "R² contaminato": 0.390, "R² raggruppato": 0.364, "Guadagno": 0.026},
             {"Modello": "LinearRegression", "R² contaminato": 0.292, "R² raggruppato": 0.289, "Guadagno": 0.003},
-        ]), hide_index=True, width="stretch")
+        ])
+        lungo = algoritmi.melt(id_vars="Modello", value_vars=["R² contaminato", "R² raggruppato"],
+                               var_name="Valutazione", value_name="R²")
+        st.altair_chart(_barre(lungo, "Modello", "R²", colore="Valutazione", altezza=240),
+                        width="stretch")
+        st.dataframe(algoritmi, hide_index=True, width="stretch")
         st.caption(
             "Una retta non può memorizzare una riga, 200 alberi sì. Il vantaggio della "
             "RandomForest sul GradientBoosting passa da 0,131 a 0,021: la scelta regge, ma "
@@ -90,6 +102,11 @@ def _importanza() -> None:
         "± incertezza": v["incertezza"],
         "Significato": v["significato"],
     } for v in dati])
+    st.altair_chart(
+        _barre(tabella, "Variabile", "Quota", orizzontale=True, formato=".1f",
+               altezza=max(160, 30 * len(tabella))),
+        width="stretch",
+    )
     st.dataframe(
         tabella, hide_index=True, width="stretch",
         column_config={
@@ -115,11 +132,14 @@ def _rag() -> None:
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("**Tre strategie sulle stesse 12 domande (top_k 3)**")
-        st.dataframe(pd.DataFrame([
-            {"Strategia": "Ibrida (in uso)", "Hit rate": "75%", "MRR": 0.653},
-            {"Strategia": "Solo lessicale", "Hit rate": "58%", "MRR": 0.542},
-            {"Strategia": "Solo semantica", "Hit rate": "42%", "MRR": 0.361},
-        ]), hide_index=True, width="stretch")
+        strategie = pd.DataFrame([
+            {"Strategia": "Ibrida (in uso)", "Hit rate %": 75, "MRR": 0.653},
+            {"Strategia": "Solo lessicale", "Hit rate %": 58, "MRR": 0.542},
+            {"Strategia": "Solo semantica", "Hit rate %": 42, "MRR": 0.361},
+        ])
+        st.altair_chart(_barre(strategie, "Strategia", "Hit rate %", formato="d", altezza=200),
+                        width="stretch")
+        st.dataframe(strategie, hide_index=True, width="stretch")
         st.caption("La semantica pura fallisce su 'ndole' e 'piatto africano': il modello di "
                    "embedding rappresenta male i piatti extra-europei.")
     with c2:

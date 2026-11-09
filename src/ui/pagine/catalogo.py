@@ -3,7 +3,11 @@
 Filtri e ordinamento sono parametri dell'API, non lavoro dell'interfaccia:
 con 6.497 vini scaricarli tutti per mostrarne una pagina sarebbe uno spreco,
 e ogni cambio di filtro rifa' la query lato database.
+
+Due viste sugli stessi risultati: la griglia di card, come nel frontend
+React, per chi sceglie un vino; la tabella per chi confronta valori.
 """
+import html
 import math
 
 import pandas as pd
@@ -11,9 +15,13 @@ import streamlit as st
 
 from src.ui import api, routing, stile
 from src.ui.api import ApiError
-from src.ui.formato import lotto_vino, tipo_esteso, titolo_vino
+from src.ui.disegni import bottiglia
+from src.ui.formato import descrizione_card, euro, iniziali, lotto_vino, tipo_esteso, titolo_vino
 
-PER_PAGINA = 50
+# Per vista: la griglia mostra meno vini per pagina perche' ogni card occupa
+# molto piu' spazio di una riga.
+PER_PAGINA = {"griglia": 24, "tabella": 50}
+COLONNE_GRIGLIA = 4
 
 ORDINAMENTI = {
     "quality_desc": "Qualità, dalla più alta",
@@ -107,25 +115,64 @@ def _export(filtri: dict, ordine: str, totale: int) -> None:
     )
 
 
-def pagina() -> None:
-    st.title("Catalogo")
-    st.caption("Seleziona una riga per aprire la scheda del vino.")
+def _card_html(v: dict, colleghi: list[str]) -> str:
+    """Card di un vino: bottiglia, lotto, colleghi, titolo, descrizione, prezzo.
 
+    Tutto il testo e' escapato: nomi e abbinamenti arrivano dal database e
+    vengono inseriti in HTML.
+    """
+    lotto = lotto_vino(v["name"])
+    etichetta = f"Lotto {lotto}" if lotto else tipo_esteso(v["type"])
+    segni = "".join(f"<span>{html.escape(iniziali(n))}</span>" for n in colleghi[:3])
+    if len(colleghi) > 3:
+        segni += f"<span>+{len(colleghi) - 3}</span>"
+    titolo_colleghi = html.escape("Segnato da: " + ", ".join(colleghi)) if colleghi else ""
+    figura = bottiglia(v["id"], v["type"], v["quality"], v["alcohol"], v["residual_sugar"], altezza=150)
+    return (
+        f'<div class="card-figura">{figura}</div>'
+        f'<div class="card-riga"><span class="card-lotto">{etichetta}</span>'
+        f'<span class="card-colleghi" title="{titolo_colleghi}">{segni}</span></div>'
+        f'<p class="card-titolo">{html.escape(titolo_vino(v["name"]))}</p>'
+        f'<p class="card-desc">{html.escape(descrizione_card(v))}</p>'
+        f'<span class="card-prezzo">{euro(v["price_eur"])}</span>'
+    )
+
+
+def _griglia(vini: list[dict]) -> None:
+    operatore = st.session_state.get(routing.OPERATORE)
     try:
-        filtri, ordine = _filtri()
-        pag = _pagina_corrente((tuple(sorted(filtri.items())), ordine))
-        risultato = api.cerca_vini(filtri, ordine, pag, PER_PAGINA)
-    except ApiError as e:
-        stile.errore(e)
-        return
+        segnati = api.preferiti()
+    except ApiError:
+        segnati = []
 
-    totale = risultato["total"]
-    if totale == 0:
-        st.info("Nessuna referenza con questi criteri. Allarga gli intervalli o azzera i filtri.")
-        return
+    for inizio in range(0, len(vini), COLONNE_GRIGLIA):
+        colonne = st.columns(COLONNE_GRIGLIA)
+        for colonna, v in zip(colonne, vini[inizio:inizio + COLONNE_GRIGLIA]):
+            di_questo = [p for p in segnati if p["wine_id"] == v["id"]]
+            mio = any(p["operator_id"] == operatore for p in di_questo)
+            colleghi = [p["operator_name"] for p in di_questo if p["operator_id"] != operatore]
+            with colonna.container(border=True):
+                stile.html(_card_html(v, colleghi))
+                c1, c2 = st.columns([3, 1])
+                if c1.button("Scopri", key=f"scopri_{v['id']}", type="primary", width="stretch"):
+                    routing.apri_vino(v["id"])
+                if operatore is not None and c2.button(
+                    "", icon=":material/favorite:", key=f"segna_{v['id']}",
+                    type="primary" if mio else "secondary", width="stretch",
+                    help="Togli dalla mia selezione" if mio else "Aggiungi alla mia selezione",
+                ):
+                    try:
+                        if mio:
+                            api.rimuovi_preferito(v["id"], operatore)
+                        else:
+                            api.aggiungi_preferito(v["id"], operatore)
+                    except ApiError as e:
+                        stile.errore(e)
+                        return
+                    st.rerun()
 
-    _export(filtri, ordine, totale)
 
+def _tabella(vini: list[dict]) -> None:
     righe = pd.DataFrame([{
         "id": v["id"],
         "Referenza": titolo_vino(v["name"]),
@@ -138,7 +185,7 @@ def pagina() -> None:
         "Prezzo": v["price_eur"],
         "Margine %": v["margin_pct"],
         "Abbinamento": v["food_pairing"],
-    } for v in risultato["items"]])
+    } for v in vini])
 
     # La chiave cambia dopo ogni apertura: senza, tornando al catalogo la
     # riga risulterebbe ancora selezionata e riaprirebbe subito la scheda.
@@ -161,7 +208,9 @@ def pagina() -> None:
         st.session_state["cat_versione"] = versione + 1
         routing.apri_vino(int(righe.iloc[evento.selection.rows[0]]["id"]))
 
-    pagine_totali = max(1, math.ceil(totale / PER_PAGINA))
+
+def _paginazione(pag: int, totale: int, per_pagina: int) -> None:
+    pagine_totali = max(1, math.ceil(totale / per_pagina))
     c1, c2, c3 = st.columns([1, 2, 1])
     if c1.button("← Precedente", disabled=pag <= 1, width="stretch"):
         st.session_state["cat_pagina"] = pag - 1
@@ -174,10 +223,45 @@ def pagina() -> None:
         st.session_state["cat_pagina"] = pag + 1
         st.rerun()
 
-    stile.nota(stile.NOTA_SIMULATI)
 
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Vini analizzati", "6.497", border=True)
-    m2.metric("Cross-validation raggruppata", "R² 0,39", border=True)
-    m3.metric("Test set senza righe ripetute", "R² 0,40", border=True)
-    st.caption("Dataset UCI Wine Quality · RandomForestRegressor in Pipeline scikit-learn")
+def pagina() -> None:
+    c1, c2 = st.columns([3, 1])
+    c1.title("Catalogo")
+    vista = c2.segmented_control("Vista", ["griglia", "tabella"], default="griglia",
+                                 key="cat_vista", label_visibility="collapsed",
+                                 format_func={"griglia": "Griglia", "tabella": "Tabella"}.get) or "griglia"
+
+    try:
+        filtri, ordine = _filtri()
+        pag = _pagina_corrente((tuple(sorted(filtri.items())), ordine, vista))
+        risultato = api.cerca_vini(filtri, ordine, pag, PER_PAGINA[vista])
+    except ApiError as e:
+        stile.errore(e)
+        return
+
+    totale = risultato["total"]
+    if totale == 0:
+        st.info("Nessuna referenza con questi criteri. Allarga gli intervalli o azzera i filtri.")
+        return
+
+    _export(filtri, ordine, totale)
+
+    if vista == "griglia":
+        _griglia(risultato["items"])
+    else:
+        st.caption("Seleziona una riga per aprire la scheda del vino.")
+        _tabella(risultato["items"])
+
+    _paginazione(pag, totale, PER_PAGINA[vista])
+
+    stile.nota(stile.NOTA_SIMULATI)
+    stile.html(
+        '<div class="fascia">'
+        '<div><b>6.497</b><span>vini analizzati</span></div>'
+        '<div><b>5-fold</b><span>cross-validation raggruppata · R² 0,39</span></div>'
+        '<div><b>R² 0,40</b><span>su test set senza righe ripetute</span></div>'
+        '</div><p class="fascia-fonte">Dataset UCI Wine Quality · '
+        'RandomForestRegressor con pipeline scikit-learn</p>'
+    )
+
+

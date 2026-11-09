@@ -17,6 +17,7 @@ import streamlit as st
 
 from src.ui import api, stile
 from src.ui.api import ApiError
+from src.ui.disegni import sveva_figura
 
 STORICO = "sveva_storico"   # messaggi inviati al backend: {ruolo, contenuto}
 DETTAGLI = "sveva_dettagli"  # per ogni risposta: fonti, metriche, memoria, demo
@@ -26,12 +27,13 @@ AVATAR = {"user": ":material/person:", "assistant": ":material/wine_bar:"}
 
 
 def _intestazione() -> None:
-    c1, c2 = st.columns([1, 9])
-    c1.markdown(stile.testa_sveva(72), unsafe_allow_html=True)
-    with c2:
-        st.title("SVEVA")
-        st.caption("Sommelier Virtuale Esperta in Vini e Abbinamenti")
-    st.markdown("Posso ragionare di abbinamenti, oppure andare a leggere cosa c'è davvero in catalogo.")
+    stile.html(
+        f'<div class="sveva-testata">{sveva_figura(130)}<div>'
+        '<div class="sveva-nome">SVEVA</div>'
+        '<p class="sveva-acronimo">Sommelier Virtuale Esperta in Vini e Abbinamenti</p>'
+        '<p class="sveva-saluto">Ciao, sono SVEVA. Posso ragionare di abbinamenti, oppure '
+        "andare a leggere cosa c'è davvero in catalogo.</p></div></div>"
+    )
 
 
 def _dettagli_risposta(d: dict) -> None:

@@ -51,6 +51,57 @@ def abbinamenti(food_pairing: str | None) -> list[str]:
     return [p.strip() for p in food_pairing.split(",") if p.strip()]
 
 
+def corpo(alcol: float) -> str:
+    """Stesse soglie di frontend/src/lib/wineLabel.ts."""
+    if alcol >= 12.0:
+        return "corposo"
+    if alcol <= 9.5:
+        return "leggero"
+    return "equilibrato"
+
+
+def dolcezza(zucchero: float, acidita: float) -> str:
+    """Dolcezza secondo il Reg. UE 2019/33, con la correzione per l'acidita':
+    a parita' di zucchero un vino piu' acido e' percepito piu' secco. Stesse
+    soglie di src/wine_style.py."""
+    if zucchero <= 4 or (zucchero <= 9 and acidita >= zucchero - 2):
+        return "secco"
+    if zucchero <= 12 or (zucchero <= 18 and acidita >= zucchero - 10):
+        return "abboccato"
+    if zucchero <= 45:
+        return "amabile"
+    return "dolce"
+
+
+def abbinamento_principale(vino: dict) -> str | None:
+    """Un piatto della lista, a rotazione sull'id del vino.
+
+    Le regole di src/pairing.py classificano i 6.497 vini in sette fasce: senza
+    rotazione le card vicine ripeterebbero lo stesso piatto. E' una
+    mitigazione di presentazione, non cambia la granularita' delle regole.
+    """
+    piatti = [p.split("(")[0].strip() for p in abbinamenti(vino.get("food_pairing"))]
+    piatti = [p for p in piatti if p]
+    return piatti[vino["id"] % len(piatti)] if piatti else None
+
+
+def descrizione_card(vino: dict) -> str:
+    """Descrizione costruita dai valori chimici, non testo redazionale."""
+    tipo = "rosso" if vino["type"] == "red" else "bianco"
+    base = (f"Un {tipo} {corpo(vino['alcohol'])}, "
+            f"{dolcezza(vino['residual_sugar'], vino['fixed_acidity'])}, "
+            f"{vino['alcohol']:.1f}% vol con pH {vino['ph']:.2f}.")
+    piatto = abbinamento_principale(vino)
+    if not piatto:
+        return base
+    preposizione = "come" if piatto.lower() == "aperitivo" else "con"
+    return f"{base} Da provare {preposizione} {piatto.lower()}."
+
+
+def iniziali(nome: str) -> str:
+    return "".join(p[0].upper() for p in nome.split()[:2] if p)
+
+
 def descrivi_criteri(profilo: dict) -> str:
     """Riassume i vincoli di un profilo di mercato in una riga leggibile."""
     parti: list[str] = []

@@ -1,18 +1,112 @@
-"""Vendite: profili di mercato e redditivita' delle referenze.
+"""Vendite: cruscotto del catalogo e profili di mercato.
 
-I profili li scrive chi vende: il dataset non contiene geografia, clienti ne'
-storico vendite, quindi nulla permette di dedurre cosa piaccia a un mercato.
-La conoscenza commerciale resta umana e viene dichiarata; il sistema cerca
-fra 6.497 lotti quelli che vi rispondono.
+CRUSCOTTO. Mostra solo cio' che il catalogo contiene: composizione per
+prezzo, qualita' e tipo, margini (simulati, e dichiarati come tali), lotti da
+far uscire per primi. Non c'e' fatturato ne' venduto: il database non ha un
+solo ordine, e un grafico delle vendite sarebbe inventato. Chi vuole
+analisi su misura scarica il CSV dal catalogo e lo collega a Power BI.
+
+PROFILI. I profili li scrive chi vende: il dataset non contiene geografia,
+clienti ne' storico vendite, quindi nulla permette di dedurre cosa piaccia a
+un mercato. La conoscenza commerciale resta umana e viene dichiarata; il
+sistema cerca fra 6.497 lotti quelli che vi rispondono.
 """
 import pandas as pd
 import streamlit as st
 
-from src.ui import api, routing, stile
+from src.ui import analisi, api, grafici, routing, stile
 from src.ui.api import ApiError
-from src.ui.formato import descrivi_criteri, lotto_vino, titolo_vino
+from src.ui.formato import descrivi_criteri, euro, lotto_vino, titolo_vino
 
 PROFILO_ATTIVO = "vendite_profilo"
+SIMULATO = ":orange[simulato]"
+
+
+def _cruscotto() -> None:
+    tipo = st.segmented_control("Tipo", ["Tutti", "Rossi", "Bianchi"], default="Tutti",
+                                key="vend_tipo", label_visibility="collapsed") or "Tutti"
+    codice = {"Rossi": "red", "Bianchi": "white"}.get(tipo)
+
+    try:
+        with st.spinner("Preparo il cruscotto..."):
+            df = analisi.prepara(api.catalogo_completo(), codice)
+            riepilogo = api.conservazione_riepilogo()
+    except ApiError as e:
+        stile.errore(e)
+        return
+    if df.empty:
+        st.info("Nessun lotto in catalogo.")
+        return
+
+    # --- Indicatori ---------------------------------------------------------
+    k = analisi.indicatori(df)
+    da_muovere = sum(r["lotti"] for r in riepilogo
+                     if r["giudizio"] == "Da immettere sul mercato" and (codice is None or r["type"] == codice))
+    c = st.columns(5)
+    c[0].metric("Lotti in catalogo", f"{k['lotti']:,}".replace(",", "."), border=True)
+    c[1].metric("Prezzo medio", euro(k["prezzo_medio"]), border=True, help="Prezzo simulato.")
+    c[2].metric("Margine medio a bottiglia", euro(k["margine_euro_medio"]), border=True,
+                help="Simulato: prezzo × margine %.")
+    c[3].metric("Margine % medio", f"{k['margine_pct_medio']:.1f}%".replace(".", ","), border=True,
+                help="Simulato.")
+    c[4].metric("Da immettere subito", f"{da_muovere:,}".replace(",", "."), border=True,
+                delta=f"{100 * da_muovere / k['lotti']:.1f}% dei lotti".replace(".", ","),
+                delta_color="off", help="Dall'indice di conservazione: lotti poco protetti.")
+
+    # --- Composizione (dati reali) -----------------------------------------
+    st.subheader("Com'è fatta l'offerta")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("**Lotti per fascia di prezzo**")
+        st.altair_chart(grafici.barre_per_tipo(analisi.lotti_per(df, "Fascia"), "Fascia"),
+                        width="stretch")
+    with c2:
+        st.markdown("**Lotti per punteggio di qualità**")
+        st.altair_chart(grafici.barre_per_tipo(analisi.lotti_per(df, "quality").rename(
+            columns={"quality": "Qualità"}), "Qualità"), width="stretch")
+
+    st.markdown("**Qualità e prezzo insieme**")
+    st.altair_chart(grafici.mappa_calore(analisi.qualita_per_fascia(df), "Fascia", "Qualità"),
+                    width="stretch")
+    st.caption("Ogni cella conta i lotti con quel punteggio in quella fascia di prezzo. "
+               "Le celle vuote sono combinazioni che il catalogo non offre.")
+
+    # --- Margini (simulati) -------------------------------------------------
+    st.subheader("Dove si guadagna")
+    st.markdown(f"Margini {SIMULATO} con la logica di `src/pricing.py`: servono a leggere la "
+                "struttura dell'offerta, non sono listini reali.")
+    margini = analisi.margini_per_fascia(df)
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("**Margine % medio per fascia**")
+        st.altair_chart(grafici.barre(margini, "Fascia", "Margine %", formato=".1f"), width="stretch")
+    with c2:
+        st.markdown("**Margine € medio a bottiglia per fascia**")
+        st.altair_chart(grafici.barre(margini, "Fascia", "Margine €", formato=".2f"), width="stretch")
+    stile.nota(
+        "<strong>I due margini vanno in direzioni opposte.</strong> La percentuale scende al "
+        "salire del prezzo, l'importo in euro sale: una bottiglia da 12 € al 63% rende circa "
+        "7,56 €, una da 24 € al 42% ne rende circa 10,08. 'Spingere i margini migliori' è un "
+        "consiglio ambiguo finché non si dice quale dei due."
+    )
+
+    # --- Magazzino ----------------------------------------------------------
+    st.subheader("Cosa far uscire per primo")
+    cons = pd.DataFrame(riepilogo)
+    if codice:
+        cons = cons[cons["type"] == codice]
+    cons["Tipo"] = cons["type"].map({"red": "Rosso", "white": "Bianco"})
+    cons = cons.rename(columns={"giudizio": "Indicazione", "lotti": "Lotti"})
+    st.altair_chart(grafici.barre_per_tipo(cons, "Indicazione", altezza=220), width="stretch")
+    if "conservazione" in routing.PAGINE:
+        st.page_link(routing.PAGINE["conservazione"], label="Vedi i lotti uno per uno",
+                     icon=":material/schedule:")
+
+    st.caption(
+        "Fatturato, ordini, canali e stagionalità non compaiono perché il database non li "
+        "contiene: la pagina Marketing indica quale dato servirebbe per ciascuno. Per analisi "
+        "su misura scarica il CSV dal catalogo e collegalo a Power BI o Excel."
+    )
 
 
 def _nuovo_profilo() -> None:
@@ -98,7 +192,15 @@ def _referenze(profilo: dict) -> None:
 
 
 def pagina() -> None:
-    st.title("Profili di mercato")
+    st.title("Vendite")
+    cruscotto, profili_tab = st.tabs(["Cruscotto", "Profili di mercato"])
+    with cruscotto:
+        _cruscotto()
+    with profili_tab:
+        _profili()
+
+
+def _profili() -> None:
     st.markdown("Descrivi cosa cerca un canale e trova le referenze che vi rispondono, "
                 "ordinate per margine.")
 

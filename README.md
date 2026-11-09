@@ -49,7 +49,7 @@ non si tocca mai, è ciò che ha reso visibile la differenza.
 | **Function calling** | l'LLM non conosce il catalogo: chiama strumenti tipizzati e il codice esegue le query |
 | **Memoria conversazionale** | finestra scorrevole con doppio limite, e la query di recupero ricostruita per i seguiti |
 
-**255 test automatici.** Nessun framework di orchestrazione (LangChain e simili):
+**275 test automatici.** Nessun framework di orchestrazione (LangChain e simili):
 le componenti sono scritte a mano perché volevo poterle misurare separatamente —
 con un `EnsembleRetriever` non avrei potuto confrontare ricerca ibrida e
 semantica pura, e scoprire che la semantica pura era la peggiore delle tre.
@@ -134,6 +134,12 @@ e imposta `OPENROUTER_API_KEY`. Senza chiave l'app funziona comunque in modalita
 
     # interfaccia Streamlit (terminale 2)
     streamlit run src/app.py
+
+    # facoltativo: i caratteri Inter e Righteous anche fuori da Docker
+    # (senza, Streamlit usa il carattere di sistema)
+    cd frontend && npm install && cd ..
+    cp frontend/node_modules/@fontsource/inter/files/inter-latin-{400,600,700}-normal.woff2 \
+       frontend/node_modules/@fontsource/righteous/files/righteous-latin-400-normal.woff2 src/static/fonts/
 
     # oppure il frontend React (terminale 2)
     cd frontend && npm install && npm run dev
@@ -311,7 +317,13 @@ principale.
   retrieval.
 - **Conservazione**: il magazzino ordinato per rischio, con i lotti da immettere
   sul mercato per primi in cima.
-- **Vendite**: profili di mercato e referenze corrispondenti, ordinate per margine.
+- **Vendite**: un cruscotto e i profili di mercato. Il cruscotto mostra solo
+  i dati che il catalogo contiene: lotti per fascia di prezzo e per qualità,
+  mappa qualità × prezzo, margini medi in percentuale e in euro (simulati e
+  dichiarati come tali), lotti da immettere subito sul mercato. Non mostra
+  fatturato né ordini, perché il database non li contiene; per analisi su
+  misura c'è l'export CSV, collegabile a Power BI. I profili trovano le
+  referenze che rispondono ai criteri di un canale, ordinate per margine.
 - **Packaging**: stile, formato, tappo ed etichetta per ogni lotto.
 - **Spedizioni** e **Marketing**: sezioni dichiarate come non ancora disponibili.
   Marketing indica per ogni analisi il dato che le servirebbe.

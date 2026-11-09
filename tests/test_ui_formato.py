@@ -39,6 +39,24 @@ def test_criteri_di_un_profilo():
     assert descrivi_criteri({}) == "nessun vincolo: tutto il catalogo"
 
 
+def test_descrizione_card_dai_dati():
+    from src.ui.formato import descrizione_card
+    v = {"id": 1, "type": "red", "alcohol": 12.4, "residual_sugar": 2.0, "fixed_acidity": 7.0,
+         "ph": 3.4, "food_pairing": "Brasato al Barolo, cinghiale in umido"}
+    # id 1 su due piatti: la rotazione sceglie il secondo.
+    assert descrizione_card(v) == ("Un rosso corposo, secco, 12.4% vol con pH 3.40. "
+                                   "Da provare con cinghiale in umido.")
+
+
+def test_dolcezza_con_correzione_per_acidita():
+    from src.ui.formato import dolcezza
+    assert dolcezza(3, 5) == "secco"
+    assert dolcezza(8, 7) == "secco"       # acido abbastanza da sembrare secco
+    assert dolcezza(8, 5) == "abboccato"
+    assert dolcezza(30, 6) == "amabile"
+    assert dolcezza(50, 6) == "dolce"
+
+
 def test_metriche_parziali():
     # In modalita' demo il backend restituisce solo il tempo di recupero.
     assert descrivi_metriche({"ms_recupero": 40}) == "recupero 40 ms"

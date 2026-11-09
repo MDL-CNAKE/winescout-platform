@@ -1067,6 +1067,41 @@ def lista_conservazione(type: str | None = None, limit: int = 60):
     return out[:limit]
 
 
+class ConservazioneConteggio(BaseModel):
+    type: str
+    giudizio: str
+    lotti: int
+
+
+# ATTENZIONE all'ordine: questa rotta deve precedere /api/conservazione/{wine_id},
+# altrimenti FastAPI proverebbe a leggere "riepilogo" come id e risponderebbe 422.
+@app.get("/api/conservazione/riepilogo", response_model=list[ConservazioneConteggio])
+def riepilogo_conservazione():
+    """Quanti lotti per giudizio e per tipo, sull'intero magazzino.
+
+    Serve al cruscotto vendite ("quanti lotti devo far uscire subito?"). La
+    lista ordinata qui sopra si ferma a 200 righe, quindi non basta per
+    contare: qui si valutano tutti i lotti e si restituiscono solo i totali.
+    Il giudizio arriva dalle stesse regole di src/conservation.py, non da un
+    secondo calcolo.
+    """
+    try:
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(f"SELECT {_CONS_COLS} FROM wines")
+            rows = cursor.fetchall()
+            cursor.close()
+    except Exception as e:
+        logger.exception("Errore nel riepilogo della conservazione")
+        raise HTTPException(status_code=500, detail="Errore nel riepilogo della conservazione") from e
+
+    conteggi: dict[tuple[str, str], int] = {}
+    for w in rows:
+        chiave = (w["type"], _conservazione_da_riga(w).giudizio)
+        conteggi[chiave] = conteggi.get(chiave, 0) + 1
+    return [{"type": t, "giudizio": g, "lotti": n} for (t, g), n in sorted(conteggi.items())]
+
+
 @app.get("/api/conservazione/{wine_id}", response_model=ConservazioneOut)
 def conservazione_vino(wine_id: int):
     try:
