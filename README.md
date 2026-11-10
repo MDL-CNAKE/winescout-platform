@@ -189,7 +189,12 @@ invece di mostrare un errore.
     |   |-- ui/                       # Interfaccia Streamlit, client del backend FastAPI
     |   |   |-- api.py                # Client HTTP con cache: unico punto di contatto col backend
     |   |   |-- navigazione.py        # Sezioni per ruolo (stesse regole del router React)
+    |   |   |-- routing.py            # Pagine e passaggio alla scheda vino
     |   |   |-- formato.py            # Formattazione pura, testata senza avviare Streamlit
+    |   |   |-- analisi.py            # Calcoli del cruscotto vendite (pandas), testati a parte
+    |   |   |-- grafici.py            # Grafici Altair: barre e mappa di calore
+    |   |   |-- disegni.py            # SVG generati dai dati: bottiglia, radar, figura di SVEVA
+    |   |   |-- stile.py              # Tema scuro e note di validazione
     |   |   `-- pagine/               # Catalogo, scheda vino, SVEVA, predizione, il modello,
     |   |                             #   conservazione, vendite, packaging, spedizioni, marketing
     |   |-- data_loader.py            # Scarica e unisce il Wine Quality Dataset (UCI)
@@ -201,9 +206,12 @@ invece di mostrare un errore.
     |   |-- conservation.py           # Indice di predisposizione alla conservazione (a regole)
     |   |-- levers.py                 # Leve di miglioramento: analisi controfattuale sul modello
     |   |-- importance.py             # Importanza per permutazione, calcolata sul test set
+    |   |-- eda.py                    # Analisi esplorativa, inclusi i duplicati
+    |   |-- static/fonts/             # Inter e Righteous per Streamlit (copiati in Docker)
     |   |-- database/
     |   |   `-- connection.py         # DatabaseConnection: context manager, logging, gestione errori
     |   |-- rag/                      # Knowledge base sensoriale, indice e recupero ibrido
+    |   |-- agent/                    # Strumenti tipizzati per il function calling
     |   `-- models/
     |       |-- compare_models.py     # Confronto RandomForest/GradientBoosting/LinearRegression, 5-fold CV
     |       |-- feature_experiment.py # Le variabili derivate migliorano il modello? (esito negativo)
@@ -224,10 +232,13 @@ invece di mostrare un errore.
     |   |-- V5__add_food_pairing.sql  # Abbinamenti cibo-vino
     |   |-- V6__add_favorites.sql     # Operatori e selezioni di lavoro condivise
     |   |-- V7__add_roles...sql       # Ruoli operativi e profili di mercato
-    |   `-- V8__add_logistica_role.sql
+    |   |-- V8__add_logistica_role.sql
+    |   `-- V9__add_marketing_role.sql
     |
     |-- docs/
     |   |-- model_limitations.md      # Limiti noti, quantificati e documentati man mano
+    |   |-- dichiarazione_etica.md    # Dati, privacy, bias, inquadramento normativo
+    |   |-- presentazione/index.html  # Slide d'esame nel browser, offline (F schermo intero, N note)
     |   `-- knowledge_base/           # Schede sensoriali per il RAG
     |
     |-- models/                       # Modello addestrato (generato da train.py, non versionato)
@@ -368,9 +379,8 @@ containerizzazione Docker completa, interfaccia Streamlit (più una React
 alternativa) su API REST FastAPI,
 integrazione LLM con prompt engineering, sistema RAG, test automatici (suite
 pytest), documentazione dei limiti del modello, spiegabilita' del modello
-(importanza per permutazione).
-
-Da fare: slide di presentazione.
+(importanza per permutazione), slide di presentazione
+(`docs/presentazione/index.html`).
 
 ## Aspetti etici
 
@@ -590,8 +600,8 @@ diventare CruScout.
 
 ## Nessuna fotografia nel prodotto
 
-Le bottiglie mostrate nel catalogo del frontend React non sono fotografie ma
-**disegni generati dai dati** (`BottleIcon`): il colore del vino deriva da tipo e gradazione, il
+Le bottiglie mostrate nel catalogo, in Streamlit (`src/ui/disegni.py`) e in
+React (`BottleIcon`), non sono fotografie ma **disegni generati dai dati**: il colore del vino deriva da tipo e gradazione, il
 livello nella bottiglia dallo zucchero residuo, la capsula dalla qualità. Le
 foto di repertorio, provate e poi scartate, mostravano la stessa immagine per
 centinaia di referenze diverse — decorazione, non informazione. Un disegno
@@ -604,6 +614,6 @@ progetto.
 
 ## Crediti
 
-- Caratteri tipografici del frontend React: Inter e Righteous, autoospitati via `@fontsource`
+- Caratteri tipografici: Inter e Righteous, autoospitati via `@fontsource` (React) e serviti da `src/static/fonts` (Streamlit)
 - Interfaccia principale: [Streamlit](https://streamlit.io)
 - Dataset: Wine Quality (Cortez et al., UCI Machine Learning Repository)
